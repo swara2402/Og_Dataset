@@ -158,3 +158,21 @@ The follow-up code changes are in commits after the original audit snapshot. CI 
 - Duplicate pattern names within the same discipline/section are rejected.
 - The dataset starts empty. No published-paper sentences or unverified patterns have been inserted.
 - The validator is included in CI. Reviewed abstract patterns may inform guidance, but they are not used to auto-generate or rewrite user prose.
+
+
+## Current verified snapshot
+
+Repository main at the time of this update: `b40741db6bca74782efe53f984c10cb508a94a6d`.
+
+- **Phase 1 — Source audit:** complete at source-code level.
+- **Phase 2 — Consolidation:** the Ollama/hosted model gateway and legacy LLM humanizer are removed; the duplicate rule directories are deleted; `knowledge_base/` is the single canonical dataset location with a manifest and four categorized rule packs.
+- **Phase 3 — Linguistic engine:** still partial. The deterministic core applies conservative mechanical corrections; optional spaCy and reviewed terminology adapters can produce narrowly scoped review-only proposals. Broad grammar, syntax, voice, clause and paragraph transformations remain incomplete.
+- **Phase 4 — Learning data:** schema, provenance, deduplication and CI validation foundations exist for revision pairs, terminology and rhetorical patterns. These datasets are empty. The corpus manifest is a synthetic placeholder and no licensed paper collection or human-reviewed revision corpus has been curated.
+- **Phase 5 — Offline NLP:** partial. Optional local spaCy morphology supports a narrow agreement proposal; no semantic embedding model is integrated.
+- **Phase 6 — Document editing:** working baseline with DOCX/PDF/TXT/Markdown/LaTeX paths, protected-content checks, accept/reject, version history and explicit version restore. Formatting fidelity is best-effort for complex DOCX/PDF layouts.
+- **Phase 7 — Testing:** automated regression and synthetic preservation benchmark pass. No independent expert linguistic evaluation or representative academic benchmark has been completed.
+- **Phase 8 — Product:** local web UI, SQLite persistence and exports exist. Packaging, complete offline acceptance, broad UI/device testing and production hardening remain.
+
+Final CI for the snapshot above: run `41908148484` completed successfully. Backend: **117 passed, 1 skipped, 1 warning**. Frontend lint and production build passed. The remaining warning is the existing Starlette TestClient/httpx deprecation notice.
+
+This is not a claim of complete platform readiness. Real corpus curation, expert-reviewed data, broader deterministic linguistic rules and human evaluation are still required.
