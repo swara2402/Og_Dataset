@@ -265,7 +265,12 @@ async def upload_document(
         )
 
     try:
-        document = DocumentParser.parse_bytes(data, filename)
+        document = DocumentParser.parse_bytes(
+            data, filename,
+            enable_pdf_ocr=_settings.pdf_ocr_enabled,
+            ocr_language=_settings.pdf_ocr_language,
+            ocr_dpi=_settings.pdf_ocr_dpi,
+        )
     except Exception as exc:
         logger.exception("Document parsing failed")
         raise HTTPException(status_code=400, detail=f"Document parsing failed: {exc}") from exc
@@ -284,6 +289,8 @@ async def upload_document(
             "columns and embedded tables."
         )
         warnings.extend(document.metadata.get("extraction_warnings", []))
+        if document.metadata.get("ocr_warning"):
+            warnings.append(document.metadata["ocr_warning"])
 
     for index, (paragraph, classification) in enumerate(zip(document.paragraphs, classifications)):
         eligible = classification.eligible_for_refinement
