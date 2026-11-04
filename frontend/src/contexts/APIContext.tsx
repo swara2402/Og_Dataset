@@ -54,8 +54,6 @@ export interface AppSettings {
   privacy: {
     local_only: boolean;
     hosted_llm: boolean;
-    originality_search: boolean;
-    originality_note: string;
   };
   cache_entries: number;
   styles: WritingStyle[];
@@ -244,20 +242,6 @@ export interface AIReport {
   metrics: Record<string, number>;
 }
 
-export interface OriginalityMatch {
-  id: string;
-  query_sentence: string;
-  sentence_index: number;
-  matched_text: string;
-  source_title: string;
-  source_url: string;
-  provider: string;
-  similarity: number;
-  direct_quotation: boolean;
-  citation_found: boolean;
-  classification: string;
-}
-
 export interface OriginalityReport {
   provider: string;
   scope: string;
@@ -298,7 +282,6 @@ export interface AnalysisReport {
     warnings: { paragraph_id: string; warning: string }[];
     checked_paragraphs: number;
   };
-  originality: OriginalityReport | null;
   disclaimer: string;
 }
 
@@ -366,13 +349,6 @@ interface APIContextType {
     action: 'accept' | 'reject'
   ) => Promise<ReviewResponse | null>;
   getAnalysisReport: (jobId: string) => Promise<AnalysisReport | null>;
-  runOriginality: (options: {
-    jobId?: string;
-    paragraphIds?: string[];
-    text?: string;
-    maxSentences?: number;
-    fetchPages?: boolean;
-  }) => Promise<OriginalityReport | null>;
   exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => Promise<Blob | null>;
   listJobs: () => Promise<JobSummary[]>;
   errorMessage: (error: unknown) => string;
@@ -629,36 +605,6 @@ export function APIProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const runOriginality = useCallback(
-    async (options: {
-      jobId?: string;
-      paragraphIds?: string[];
-      text?: string;
-      maxSentences?: number;
-      fetchPages?: boolean;
-    }): Promise<OriginalityReport | null> => {
-      try {
-        const response = await api.post<OriginalityReport>(
-          '/originality/check',
-          {
-            confirm_search: true,
-            job_id: options.jobId,
-            paragraph_ids: options.paragraphIds,
-            text: options.text,
-            max_sentences: options.maxSentences ?? 6,
-            fetch_pages: options.fetchPages ?? true,
-          },
-          { timeout: 180000 }
-        );
-        return response.data;
-      } catch (error) {
-        console.error('Originality check failed:', extractError(error));
-        return null;
-      }
-    },
-    []
-  );
-
   const exportDocument = useCallback(
     async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex'): Promise<Blob | null> => {
       try {
@@ -700,7 +646,6 @@ export function APIProvider({ children }: { children: ReactNode }) {
     restoreVersion,
     reviewHybridProposal,
     getAnalysisReport,
-    runOriginality,
     exportDocument,
     listJobs,
     errorMessage: extractError,
