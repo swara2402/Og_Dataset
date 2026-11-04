@@ -106,6 +106,8 @@ class DocumentParser:
             return DocxParser.parse_bytes(data, filename)
         if suffix == ".pdf":
             return PDFParser.parse_bytes(data, filename)
+        if suffix == ".tex":
+            return LatexParser.parse_bytes(data, filename)
         if suffix in (".txt", ".text"):
             return TextParser.parse_bytes(data, filename)
         if suffix in (".md", ".markdown"):
@@ -119,6 +121,8 @@ class DocumentParser:
             return DocxParser.parse(file_path, filename)
         elif suffix == '.pdf':
             return PDFParser.parse(file_path, filename)
+        elif suffix == '.tex':
+            return LatexParser.parse(file_path, filename)
         elif suffix in ['.txt', '.text']:
             return TextParser.parse(file_path, filename)
         elif suffix in ['.md', '.markdown']:
@@ -133,6 +137,8 @@ class DocumentParser:
             return DocxParser.parse_bytes(data, filename)
         elif suffix == '.pdf':
             return PDFParser.parse_bytes(data, filename)
+        elif suffix == '.tex':
+            return LatexParser.parse_bytes(data, filename)
         elif suffix in ['.txt', '.text']:
             return TextParser.parse_bytes(data, filename)
         elif suffix in ['.md', '.markdown']:
@@ -485,3 +491,60 @@ class MarkdownParser:
             file_type="markdown",
             paragraphs=paragraphs
         )
+
+
+class LatexParser:
+    """Conservative LaTeX block parser with exact source offsets.
+
+    It does not attempt to fully compile or normalize TeX. Structural commands,
+    math environments, code environments and bibliography blocks are marked
+    non-editable; prose blocks retain source positions for export.
+    """
+
+    @staticmethod
+    def _classify(block: str) -> str:
+        value = block.strip()
+        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|gather\*?|multline\*?|math|displaymath|flalign\*?)\}", value):
+            return "equation"
+        if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt)\}", value):
+            return "code"
+        if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)", value):
+            return "reference"
+        if re.search(r"\\(?:documentclass|usepackage|newcommand|renewcommand|begin\s*\{document\}|end\s*\{document\}|maketitle|author|date|label)\b", value):
+            return "front_matter"
+        if re.search(r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|title)\*?\s*\{", value):
+            return "heading"
+        if value.startswith("%"):
+            return "code"
+        return "body"
+
+    @staticmethod
+    def _parse_content(content: str, filename: str) -> ParsedDocument:
+        paragraphs: List[DocumentParagraph] = []
+        block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
+        for index, match in enumerate(block_pattern.finditer(content), start=1):
+            block = match.group(0)
+            start, end = match.span()
+            paragraphs.append(DocumentParagraph(
+                id=f"tex_block_{index}",
+                text=block,
+                paragraph_type=LatexParser._classify(block),
+                location=f"tex.{start}:{end}",
+                metadata={"source_start": start, "source_end": end, "format": "latex"},
+            ))
+        return ParsedDocument(
+            filename=filename,
+            file_type="tex",
+            paragraphs=paragraphs,
+            metadata={"source_length": len(content), "format": "latex"},
+        )
+
+    @staticmethod
+    def parse(file_path: Path, filename: str) -> ParsedDocument:
+        content = file_path.read_text(encoding="utf-8-sig")
+        return LatexParser._parse_content(content, filename)
+
+    @staticmethod
+    def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
+        content = data.decode("utf-8-sig")
+        return LatexParser._parse_content(content, filename)
