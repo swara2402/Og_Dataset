@@ -62,7 +62,6 @@ export default function DocumentWorkspace() {
   const [exportOpen, setExportOpen] = useState(false);
   const [hybridResult, setHybridResult] = useState<HybridAnalysisResponse | null>(null);
   const [hybridLoading, setHybridLoading] = useState(false);
-  const [useLocalOllama, setUseLocalOllama] = useState(false);
   const [useSpacyContext, setUseSpacyContext] = useState(false);
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
   const [hybridDecisions, setHybridDecisions] = useState<Record<string, 'accepted' | 'rejected'>>({});
@@ -225,10 +224,9 @@ export default function DocumentWorkspace() {
       category: paragraph.category,
       document_context: results?.results.map((item) => item.revised).join("\\n\\n").slice(0, 100000) || paragraph.original,
       include_nlp: useSpacyContext,
-      include_local_llm: useLocalOllama,
     });
     if (!response) {
-      setError('Hybrid analysis failed. Check whether the selected local providers are enabled in backend settings.');
+      setError('Local analysis failed. Check whether optional spaCy context analysis is enabled.');
     } else {
       setHybridResult(response);
     }
@@ -540,7 +538,7 @@ export default function DocumentWorkspace() {
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="font-medium text-neutral-800 dark:text-neutral-100">Hybrid suggestion review</p>
-                          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">Generate traceable proposals from the rule engine and any enabled local providers. Nothing is applied automatically.</p>
+                          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">Generate traceable proposals from deterministic rules and optional spaCy context. Nothing is applied automatically.</p>
                         </div>
                         <button onClick={() => void handleHybridAnalysis(selected)} disabled={hybridLoading} className="btn-primary inline-flex items-center gap-2">
                           {hybridLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
@@ -553,11 +551,9 @@ export default function DocumentWorkspace() {
                           Include spaCy context
                         </label>
                         <label className="inline-flex items-center gap-2">
-                          <input type="checkbox" checked={useLocalOllama} onChange={(event) => setUseLocalOllama(event.target.checked)} />
-                          Include local Ollama
                         </label>
                       </div>
-                      {(useSpacyContext || useLocalOllama) && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Selected providers must be enabled and configured by the backend administrator.</p>}
+                      {useSpacyContext && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Optional spaCy context analysis must be enabled and configured locally.</p>}
                       {hybridResult && hybridResult.paragraph_id === selected.id && (
                         <div className="mt-4 space-y-3">
                           <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{hybridResult.proposals.length} proposal(s) · {hybridResult.applied ? 'Applied' : 'Not applied'} · Review required: {hybridResult.review_required ? 'Yes' : 'No'}</p>
