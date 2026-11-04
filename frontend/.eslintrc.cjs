@@ -10,12 +10,11 @@ module.exports = {
     sourceType: 'module',
     ecmaFeatures: { jsx: true },
   },
-  plugins: ['@typescript-eslint', 'react-hooks', 'react-refresh'],
+  plugins: ['@typescript-eslint', 'react-hooks'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
-    'plugin:react-refresh/only-export-components',
   ],
   ignorePatterns: ['dist', 'node_modules'],
 };
