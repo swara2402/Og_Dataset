@@ -1,0 +1,51 @@
+"""Bearer-token authentication and request-scoped job ownership.
+
+Set OG_API_TOKENS to a JSON object of stable user IDs and high-entropy tokens,
+for example {"alice":"<random-secret>","bob":"<another-random-secret>"}.
+"""
+from __future__ import annotations
+
+import hmac
+import json
+from contextvars import ContextVar
+from typing import Dict, Optional
+
+current_owner_id: ContextVar[str] = ContextVar("current_owner_id", default="local")
+
+
+def _parse_tokens(raw_tokens: str) -> Dict[str, str]:
+    try:
+        value = json.loads(raw_tokens)
+    except json.JSONDecodeError as exc:
+        raise ValueError("OG_API_TOKENS must contain a valid JSON object.") from exc
+    if not isinstance(value, dict) or not value:
+        raise ValueError("OG_API_TOKENS must be a non-empty JSON object.")
+    if any(not isinstance(user, str) or not user.strip() or not isinstance(token, str) or not token for user, token in value.items()):
+        raise ValueError("OG_API_TOKENS must map non-empty user IDs to non-empty token strings.")
+    return value
+
+
+def resolve_owner(
+    authorization: Optional[str],
+    raw_tokens: str,
+    auth_required: bool = False,
+) -> str:
+    if not raw_tokens.strip():
+        if auth_required:
+            raise ValueError("API authentication is required but OG_API_TOKENS is not configured.")
+        return "local"
+
+    tokens = _parse_tokens(raw_tokens)
+    if not authorization or not authorization.startswith("Bearer "):
+        raise PermissionError("Bearer token required.")
+    supplied = authorization[7:].strip()
+    if not supplied:
+        raise PermissionError("Bearer token required.")
+    # Compare every configured token to avoid returning early on a user match.
+    matched_user = None
+    for user_id, expected in tokens.items():
+        if hmac.compare_digest(supplied, expected):
+            matched_user = user_id
+    if matched_user is None:
+        raise PermissionError("Invalid bearer token.")
+    return matched_user
