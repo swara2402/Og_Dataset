@@ -93,14 +93,23 @@ are treated as belonging to the legacy `local` account and are not visible
 to configured token users. Use separate token secrets for each user; do not
 share a single token across people.
 
+The API also applies a sliding-window limit of 120 requests per minute per
+authenticated owner and direct client IP by default. Change
+`OG_API_RATE_LIMIT_PER_MINUTE` to tune the budget. Excess requests receive
+`429` with `Retry-After: 60`. This limiter is in-process: it is useful
+for a single local instance, but counters are not shared across workers
+or replicas. A multi-worker or public deployment must add a shared gateway
+or distributed limiter and configure trusted proxy handling; do not trust
+client-supplied forwarding headers as identity.
+
 For backward compatibility, when `OG_API_TOKENS` is empty and
 `OG_API_AUTH_REQUIRED` is false, the API runs in unauthenticated
 `local` mode. This mode is intended only for a trusted machine with the
 backend bound to `127.0.0.1` as shown above. Set
 `OG_API_AUTH_REQUIRED=true` in any deployment environment so API requests
 fail closed with `503` if tokens are missing. Do not expose the API publicly
-without TLS termination, strong unique secrets, rate limiting, protected
-database and upload storage, and operational monitoring.
+without TLS termination, strong unique secrets, a shared rate limiter where
+needed, protected database and upload storage, and operational monitoring.
 
 The separate `hosted_gateway.py` protects access to an Ollama model gateway
 only; it does **not** authenticate the document API. CORS is not an
@@ -152,7 +161,7 @@ another rule set.
 - PDF extraction and export may lose complex layout, columns, figures, and
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
-- Jobs and review decisions are persisted in a local SQLite database. The database and uploaded originals remain on the host filesystem; configure protected storage and backups before using valuable documents. This is single-user local persistence, not multi-user isolation.
+- Jobs and review decisions are persisted in a local SQLite database. API-level owner checks prevent one configured token user from accessing another user's job through the application, but all records still share the same database and host filesystem. This is not OS-level tenant isolation or per-user encryption. Protect database, upload and export directories with restrictive filesystem permissions, backups and host access controls before multi-user use.
 - The Ollama adapter is opt-in, requires a locally running Ollama service and an explicitly configured model, and is never called by default.
 - The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
 - Only five synthetic, draft examples are currently provided; there are no
