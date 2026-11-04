@@ -137,6 +137,11 @@ class ReviewRequest(BaseModel):
     action: Literal["accept", "reject"]
 
 
+class RestoreVersionRequest(BaseModel):
+    paragraph_id: str = Field(min_length=1, max_length=200)
+    version: int = Field(ge=0)
+
+
 class HybridProposalReviewRequest(BaseModel):
     paragraph_id: str = Field(min_length=1, max_length=200)
     proposal_id: str = Field(min_length=1, max_length=200)
@@ -590,6 +595,36 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
         "paragraph": state.to_dict(),
         "statistics": job.statistics,
     }
+
+
+@api_router.post("/processing/{job_id}/restore-version")
+async def restore_version(job_id: str, request: RestoreVersionRequest) -> Dict[str, Any]:
+    """Restore a previously recorded paragraph version as the current revision."""
+    job = _get_job(job_id)
+    if job.status in {"queued", "processing"}:
+        raise HTTPException(status_code=409, detail="Wait for document processing to finish.")
+    state = _get_state(job, request.paragraph_id)
+    if request.version >= len(state.versions):
+        raise HTTPException(status_code=404, detail="Paragraph version not found.")
+    version = state.versions[request.version]
+    state.current_text = version.text
+    state.current_masked_text = version.masked_text
+    state.validation = dict(version.validation)
+    state.applied_rule_ids = list(version.applied_rule_ids)
+    state.edit_rationale = version.edit_rationale
+    state.editing_level_applied = version.editing_level_applied
+    state.issues_found = list(version.issues_found)
+    state.edit_scope = version.edit_scope
+    state.change_summary = list(version.change_summary)
+    state.requires_human_review = version.requires_human_review
+    state.review_status = "unchanged" if version.source == "original" else "accepted"
+    if _engine:
+        _engine._finalise_statistics(job)
+    job.writing_quality = None
+    job.ai_indicators = None
+    job.originality = None
+    job_store.save(job)
+    return {"job_id": job.job_id, "paragraph": state.to_dict(), "restored_version": request.version}
 
 
 # ------------------------------------------------------------------- analysis
