@@ -36,6 +36,18 @@ def test_configured_tokens_require_authentication_and_isolate_jobs():
 
             assert client.get(f"/api/v1/documents/{job_id}", headers=alice).status_code == 200
             assert client.get(f"/api/v1/documents/{job_id}", headers=bob).status_code == 404
+            # Every job-scoped route must enforce ownership before returning
+            # status, results, review, analysis, cancellation, or export data.
+            assert client.get(f"/api/v1/processing/{job_id}/status", headers=bob).status_code == 404
+            assert client.get(f"/api/v1/processing/{job_id}/results", headers=bob).status_code == 404
+            assert client.post(f"/api/v1/processing/{job_id}/cancel", headers=bob).status_code == 404
+            assert client.post(
+                f"/api/v1/processing/{job_id}/review",
+                headers=bob,
+                json={"paragraph_id": "not-owned", "action": "accept"},
+            ).status_code == 404
+            assert client.get(f"/api/v1/analysis/{job_id}/report", headers=bob).status_code == 404
+            assert client.get(f"/api/v1/export/{job_id}/txt", headers=bob).status_code == 404
             assert client.get(
                 f"/api/v1/processing/{job_id}/status",
                 headers={"Authorization": "Bearer invalid-token"},
