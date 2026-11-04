@@ -14,6 +14,8 @@ def entry(**overrides):
         "definition": "A table comparing predicted and observed classes.",
         "disciplines": ["computer_science"],
         "contexts": ["classification evaluation"],
+        "context_terms": ["classification", "evaluation"],
+        "variants": ["confusion-matrix"],
         "preferred_form": "confusion matrix",
         "avoid_substitutions": ["error table"],
         "usage_note": "Use the established technical term.",
