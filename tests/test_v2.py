@@ -21,7 +21,7 @@ from backend.app.document_processing.parser import (
     DocumentParser,
     ParsedDocument,
 )
-from backend.app.export.exporter import export_document
+from backend.app.export.exporter import _set_paragraph_text, export_document
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
 from backend.app.originality.detector import _search_query, _select_queries
@@ -467,3 +467,24 @@ def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
             assert "Introduction" in exported.text
     finally:
         app_settings.export_dir = original_export_dir
+
+
+
+def test_docx_text_replacement_preserves_inline_run_formatting():
+    document = DocxDocument()
+    paragraph = document.add_paragraph()
+    paragraph.add_run("A ")
+    bold_run = paragraph.add_run("bold")
+    bold_run.bold = True
+    italic_run = paragraph.add_run(" word")
+    italic_run.italic = True
+
+    _set_paragraph_text(paragraph, "A bolded word")
+
+    assert paragraph.text == "A bolded word"
+    assert paragraph.runs[0].text == "A "
+    assert paragraph.runs[0].bold is not True
+    assert paragraph.runs[1].text == "bolded"
+    assert paragraph.runs[1].bold is True
+    assert paragraph.runs[2].text == " word"
+    assert paragraph.runs[2].italic is True
