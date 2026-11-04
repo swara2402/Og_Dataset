@@ -203,7 +203,7 @@ export interface AIIndicator {
 export interface AIReport {
   detector_available: boolean;
   detector_note: string;
-  indicator_score: number;
+  indicator_score: number | null;
   band: string;
   summary: string;
   indicators: AIIndicator[];
