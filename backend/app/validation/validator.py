@@ -18,7 +18,7 @@ CITATION_RE = re.compile(
     r"\([A-Z][A-Za-z .'-]+,\s*\d{4}[a-z]?\)|"
     r"\b(?:doi:\s*10\.\d{4,9}/[^\s,;]+|https?://[^\s)\]}>,;]+)"
 )
-MODALITY_RE = re.compile(
+MEANING_MARKER_RE = re.compile(
     r"\b(?:not|no|never|may|might|could|would|should|must|possibly|probably|"
     r"likely|unlikely|suggest(?:s|ed)?|approximately|about|all|any|some|most|"
     r"many|few|several|each|every|none|only|exclusively|because|therefore|thus|"
@@ -50,11 +50,11 @@ def content_tokens(text: str) -> List[str]:
     ]
 
 
-def _modality_signature(text: str) -> List[Tuple[str, Tuple[str, ...], Tuple[str, ...]]]:
+def _meaning_marker_signature(text: str) -> List[Tuple[str, Tuple[str, ...], Tuple[str, ...]]]:
     """Capture local lexical context around negation and uncertainty markers."""
     words = list(re.finditer(r"\b[\w'-]+\b", text.casefold()))
     signatures = []
-    for marker in MODALITY_RE.finditer(text):
+    for marker in MEANING_MARKER_RE.finditer(text):
         index = next(
             (i for i, word in enumerate(words) if word.start() <= marker.start() < word.end()),
             None,
@@ -157,8 +157,8 @@ def validate_rewrite(
         issues.append(f"New citations/links introduced: {', '.join(added_citations[:5])}")
         critical = True
 
-    original_modality = _modality_signature(original_text)
-    revised_modality = _modality_signature(revised_text)
+    original_modality = _meaning_marker_signature(original_text)
+    revised_modality = _meaning_marker_signature(revised_text)
     modality_ok = original_modality == revised_modality
     if not modality_ok:
         issues.append("A qualifier, relationship marker, negation or uncertainty marker, or its local scope, changed.")
@@ -214,6 +214,7 @@ def validate_rewrite(
             "numbers": numbers_ok,
             "citations": citations_ok,
             "modality": modality_ok,
+            "meaning_markers": modality_ok,
             "semantic": semantic_ok,
         },
         "metrics": {
