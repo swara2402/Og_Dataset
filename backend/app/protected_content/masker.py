@@ -28,6 +28,7 @@ PROTECTED_PATTERNS: dict[str, str] = {
     "technical_id": r"\b(?:CVE-\d{4}-\d{4,}|CWE-\d+|CVSS(?::\d+(?:\.\d+)?)?|CPE:[^\s,;]+|EPSS)\b",
     "number": r"(?<![A-Za-z])\b\d+(?:[.,]\d+)*(?:\s?%)?\b",
     "equation": r"\$[^$]+\$|\\\([^)]*\\\)|\\\[[^]]*\\\]",
+    "latex_command": r"\\[A-Za-z@]+\*?(?:\[[^\]\n]*\])*(?:\{[^{}\n]*\})*",
 }
 
 PLACEHOLDER_RE = re.compile(r"__TURNITOUT_PROTECTED_\d{4}__")
@@ -35,7 +36,7 @@ PLACEHOLDER_RE = re.compile(r"__TURNITOUT_PROTECTED_\d{4}__")
 # Numbers remain readable and are validated directly. Identifiers, citations,
 # and quotations are masked so deterministic edits cannot alter their contents.
 MASKED_TYPES = {
-    "citation", "email", "equation", "quoted_text", "technical_id", "url", "doi"
+    "citation", "email", "equation", "latex_command", "quoted_text", "technical_id", "url", "doi"
 }
 
 
