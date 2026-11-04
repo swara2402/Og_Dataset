@@ -32,7 +32,7 @@ def record(**overrides):
 
 
 def write_records(path, records):
-    path.write_text("".join(json.dumps(item) + "\\n" for item in records), encoding="utf-8")
+    path.write_text("".join(json.dumps(item) + "\n" for item in records), encoding="utf-8")
 
 
 def test_accepts_explicitly_approved_pair(tmp_path):
