@@ -83,6 +83,16 @@ def _valid_manifest_record(local_text="paper.txt"):
     }
 
 
+def test_manifest_requires_licence_evidence_for_real_sources(tmp_path):
+    manifest = tmp_path / "sources.jsonl"
+    record = _valid_manifest_record()
+    record.pop("license_evidence")
+    record.pop("attribution")
+    manifest.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="license_evidence"):
+        load_manifest(manifest)
+
+
 def test_manifest_schema_rejects_duplicate_sections_and_unknown_fields(tmp_path):
     manifest = tmp_path / "sources.jsonl"
     record = _valid_manifest_record()
