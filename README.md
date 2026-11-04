@@ -146,7 +146,7 @@ file on every push. The terminology inventory lives in `knowledge_base/datasets/
 the manifest format, supported licence identifiers, and workflow.
 
 The corpus preparation workflow measures section coverage, sentence-length
-distributions, hedge markers, passive-auxiliary markers, and transition
+distributions, hedge markers, be-auxiliary markers, sentence-opening patterns, and transition
 categories. Human-reviewed revision pairs and discipline-specific terminology
 have separate provenance-aware schemas and validators. These are descriptive observations—not targets to imitate or
 quality scores. The deterministic Python rules remain the only editing
