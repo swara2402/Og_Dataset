@@ -266,7 +266,10 @@ def export_document(job: Job, fmt: str, output_dir: str) -> Path:
     fmt = fmt.lower().lstrip(".")
     stem = _safe_stem(job.filename)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    output = Path(output_dir) / f"{stem}_revised_{timestamp}.{fmt}"
+    # Include the opaque job ID so concurrent users exporting same-named files
+    # cannot overwrite one another in the shared export directory.
+    job_suffix = re.sub(r"[^A-Za-z0-9_-]+", "_", job.job_id)[:64] or "job"
+    output = Path(output_dir) / f"{stem}_revised_{timestamp}_{job_suffix}.{fmt}"
     output.parent.mkdir(parents=True, exist_ok=True)
 
     if fmt == "docx":
