@@ -25,7 +25,7 @@ if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number
   echo "Vite 8 requires Node.js 20.19+ or 22.12+." >&2
   exit 1
 fi
-if ! "$PYTHON_BIN" -c 'import fastapi, uvicorn, docx, pypdf, reportlab, jsonschema, multipart' >/dev/null 2>&1; then
+if ! "$PYTHON_BIN" -c 'import fastapi, uvicorn, docx, pypdf, reportlab, jsonschema, multipart, pydantic_settings, httpx, markdown, bs4' >/dev/null 2>&1; then
   echo "Backend dependencies are missing. Run: $PYTHON_BIN -m pip install -r requirements.txt" >&2
   exit 1
 fi
