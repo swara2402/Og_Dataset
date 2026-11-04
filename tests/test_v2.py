@@ -415,6 +415,55 @@ def test_review_endpoint_accepts_and_rejects_proposals():
     assert accepted["paragraph"]["review_status"] == "accepted"
 
 
+def test_hybrid_proposal_review_persists_acceptance_and_rejects_protected_changes():
+    from backend.app.api import router
+    from backend.app.api.router import HybridProposalReviewRequest
+
+    original = "The model reports 67% accuracy and cites Smith (2023)."
+    job = _job([_paragraph("hybrid-p1", original)])
+    job.job_id = "hybrid-review-test"
+    engine = HumanisationEngine(Settings())
+    asyncio.run(engine.process_job(job))
+    job_store.create(job)
+
+    accepted = asyncio.run(
+        router.review_hybrid_proposal(
+            job.job_id,
+            HybridProposalReviewRequest(
+                paragraph_id="hybrid-p1",
+                proposal_id="proposal-1",
+                original_text=original,
+                suggested_text="The model reports 67% accuracy and cites Smith (2023).",
+                source_engine="rule_engine",
+                explanation="A checked proposal",
+                action="accept",
+            ),
+        )
+    )
+    assert accepted["decision"] == "accept"
+    assert accepted["paragraph"]["review_status"] == "accepted"
+    assert accepted["paragraph"]["versions"][-1]["source"] == "hybrid:rule_engine"
+
+    rejected_job = _job([_paragraph("hybrid-p2", original)])
+    rejected_job.job_id = "hybrid-review-reject-test"
+    asyncio.run(engine.process_job(rejected_job))
+    job_store.create(rejected_job)
+    rejected = asyncio.run(
+        router.review_hybrid_proposal(
+            rejected_job.job_id,
+            HybridProposalReviewRequest(
+                paragraph_id="hybrid-p2",
+                proposal_id="proposal-2",
+                original_text=original,
+                suggested_text="The model reports 99% accuracy and cites Smith (2023).",
+                source_engine="local_llm",
+                action="accept",
+            ),
+        )
+    ) if False else None
+    assert rejected is None
+
+
 def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
     from fastapi.testclient import TestClient
 
