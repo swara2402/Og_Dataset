@@ -233,11 +233,11 @@ async def upload_document(
 ) -> UploadResponse:
     filename = file.filename or "document.txt"
     suffix = Path(filename).suffix.lower()
-    allowed = {".docx", ".pdf", ".txt", ".md", ".markdown", ".text"}
+    allowed = {".docx", ".pdf", ".txt", ".md", ".markdown", ".text", ".tex"}
     if suffix not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format '{suffix or 'unknown'}'. Allowed: DOCX, PDF, TXT, MD.",
+            detail=f"Unsupported file format '{suffix or 'unknown'}'. Allowed: DOCX, PDF, TXT, MD, TEX.",
         )
     try:
         data = await file.read()
@@ -645,6 +645,7 @@ def _export_response(job_id: str, fmt: str) -> FileResponse:
         "pdf": "application/pdf",
         "md": "text/markdown",
         "txt": "text/plain",
+        "tex": "application/x-tex",
     }
     headers = {"X-Export-Notes": " | ".join(notes)[:900]} if notes else None
     return FileResponse(path, filename=path.name, media_type=media_types.get(fmt, "application/octet-stream"), headers=headers)
