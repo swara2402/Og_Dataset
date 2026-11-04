@@ -24,11 +24,14 @@ def validate_dataset(root: str | Path) -> dict[str, Any]:
     root = Path(root)
     rules_doc = _load_json(root / "rules" / "master_rules.json")
     policy = _load_json(root / "rules" / "adaptive_editing_policy.json")
-    schema = _load_json(root / "schemas" / "example.schema.json")
+    example_schema = _load_json(root / "schemas" / "example.schema.json")
+    rule_schema = _load_json(root / "schemas" / "rule.schema.json")
+    policy_schema = _load_json(root / "schemas" / "policy.schema.json")
     try:
-        Draft202012Validator.check_schema(schema)
+        for schema in (example_schema, rule_schema, policy_schema):
+            Draft202012Validator.check_schema(schema)
     except SchemaError as exc:
-        raise DatasetValidationError(f"Invalid example JSON Schema: {exc.message}") from exc
+        raise DatasetValidationError(f"Invalid dataset JSON Schema: {exc.message}") from exc
 
     rules = rules_doc.get("rules") if isinstance(rules_doc, dict) else None
     if not isinstance(rules, list) or not rules:
@@ -38,11 +41,19 @@ def validate_dataset(root: str | Path) -> dict[str, Any]:
         raise DatasetValidationError("Every rule must be an object with a non-empty id")
     if len(ids) != len(set(ids)):
         raise DatasetValidationError("Rule IDs must be unique")
-    if not isinstance(policy, dict) or not isinstance(policy.get("edit_scope_priority"), list):
-        raise DatasetValidationError("Editing policy is missing edit_scope_priority")
+    rule_validator = Draft202012Validator(rule_schema)
+    for index, rule in enumerate(rules, 1):
+        errors = sorted(rule_validator.iter_errors(rule), key=lambda err: list(err.absolute_path))
+        if errors:
+            raise DatasetValidationError(f"Rule {ids[index - 1]}: {errors[0].message}")
+
+    policy_errors = sorted(Draft202012Validator(policy_schema).iter_errors(policy),
+                           key=lambda err: list(err.absolute_path))
+    if policy_errors:
+        raise DatasetValidationError(f"Editing policy: {policy_errors[0].message}")
 
     examples_path = root / "datasets" / "examples.jsonl"
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(example_schema)
     seen: set[str] = set()
     count = 0
     with examples_path.open(encoding="utf-8") as stream:
