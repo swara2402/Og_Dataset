@@ -39,15 +39,9 @@ class Settings(BaseSettings):
     pdf_ocr_language: str = "eng"
     pdf_ocr_dpi: int = 200
 
-    # Optional local NLP/LLM providers. Both are opt-in and disabled by default.
+    # Optional offline NLP; never downloads models or generates replacement text.
     spacy_enabled: bool = False
     spacy_model: str = "en_core_web_sm"
-    ollama_enabled: bool = False
-    ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = ""
-    ollama_api_key: str = ""
-    ollama_timeout: float = 180.0
-    ollama_num_ctx: int = 8192
 
     # Originality / source matching (explicit user action only)
     enable_web_originality: bool = False
