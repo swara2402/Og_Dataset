@@ -98,3 +98,19 @@ This is a source-code and CI audit, not a claim of real-device or expert linguis
 ## Follow-up implementation update
 
 Ollama was removed from the API request contract, runtime provider imports, settings model, workspace controls and settings display. The deterministic rule engine and optional local spaCy context provider remain. Provider-file and hosted-gateway artifact deletion is in progress; this follow-up does not change the earlier audit findings at its recorded commit.
+
+
+## Follow-up implementation — model-provider removal and canonical dataset consolidation
+
+Changes landed on `main` after the audit snapshot:
+
+- Removed Ollama request fields and runtime construction from the paragraph-analysis API.
+- Removed Ollama configuration fields from application settings and removed the related environment variables.
+- Removed Ollama UI controls, status reporting, and TypeScript request/status types.
+- Deleted the Ollama provider, adapter, suggestion engine, hosted gateway, gateway Docker files, and the legacy standalone LLM humanizer and its legacy tests/notes.
+- Deleted duplicate rule/example directories at `backend/app/rules/`, `backend/app/datasets/`, and root `rules/`. The runtime canonical dataset is now `knowledge_base/`.
+- Added architecture regression tests for the single canonical dataset location, absence of Ollama configuration/provider files, and the paragraph-analysis request contract.
+- Retained optional spaCy context analysis. It is local, does not generate text, and is not required for core deterministic processing.
+- Retained optional public-web originality lookup as a separate network-only feature. It is not called by document editing; use the core workflow offline by leaving that feature unused/disabled.
+
+The follow-up code changes are in commits after the original audit snapshot. CI must pass on the final current `main` SHA before this follow-up is considered verified.
