@@ -47,8 +47,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Turnitout V2 API",
     description=(
-        "Local-first document humanisation, writing-quality analysis and sampled "
-        "originality checking. No document content is sent to a hosted LLM."
+        "Offline-first academic document editing with deterministic writing-quality "
+        "suggestions, protected-content validation, local history and exports."
     ),
     version="2.0.0",
     lifespan=lifespan,
