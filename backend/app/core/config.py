@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     # high-entropy bearer tokens before exposing the API beyond localhost.
     api_tokens: str = ""
     api_auth_required: bool = False
+    # Per-owner + direct-client-IP request budget; shared gateways must add distributed limits.
+    api_rate_limit_per_minute: int = 120
 
     # Storage / CORS
     upload_dir: str = str(BASE_DIR / "backend" / "uploads")
