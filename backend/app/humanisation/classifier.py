@@ -24,7 +24,7 @@ SECTION_PATTERNS = {
     "introduction": [r"introduction"],
     "conclusion": [r"conclusions?"],
     "acknowledgments": [r"acknowledg(?:e)?ments?"],
-    "future_work": [r"future\\s+work"],
+    "future_work": [r"future\s+work"],
     "literature_review": [
         r"literature\s*review",
         r"previous\s*work",
