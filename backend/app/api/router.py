@@ -669,7 +669,6 @@ async def analysis_report(job_id: str) -> Dict[str, Any]:
     job = _get_job(job_id)
     report = _build_analysis(job)
     job.writing_quality = report["writing_quality"]
-    job.ai_indicators = report["ai_indicators"]
     return report
 
 
