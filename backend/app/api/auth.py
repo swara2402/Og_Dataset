@@ -49,3 +49,42 @@ def resolve_owner(
     if matched_user is None:
         raise PermissionError("Invalid bearer token.")
     return matched_user
+
+
+# A small in-process sliding-window limiter. For multi-worker or multi-instance
+# deployments, enforce the same limits at a shared gateway (for example Redis
+# or a reverse proxy); this memory is intentionally not presented as distributed.
+import threading
+import time
+from collections import defaultdict, deque
+
+_rate_lock = threading.Lock()
+_rate_events = defaultdict(deque)
+
+
+def is_rate_limited(key: str, limit: int, window_seconds: int = 60) -> bool:
+    """Return True when key has exhausted its request budget for the window."""
+    now = time.monotonic()
+    cutoff = now - window_seconds
+    with _rate_lock:
+        events = _rate_events[key]
+        while events and events[0] <= cutoff:
+            events.popleft()
+        if len(events) >= limit:
+            return True
+        events.append(now)
+        # Bound stale-key growth during long-running local sessions.
+        if len(_rate_events) > 10_000:
+            for stale_key in list(_rate_events):
+                stale_events = _rate_events[stale_key]
+                while stale_events and stale_events[0] <= cutoff:
+                    stale_events.popleft()
+                if not stale_events:
+                    _rate_events.pop(stale_key, None)
+        return False
+
+
+def reset_rate_limits() -> None:
+    """Clear limiter state; exposed for deterministic tests only."""
+    with _rate_lock:
+        _rate_events.clear()
