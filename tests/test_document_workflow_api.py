@@ -186,3 +186,24 @@ def test_restore_version_rejects_unknown_version():
             json={"paragraph_id": paragraph["id"], "version": 999},
         )
         assert response.status_code == 404
+
+
+
+def test_analysis_report_excludes_authorship_heuristics_and_endpoint_is_removed():
+    with TestClient(app) as client:
+        job_id, _ = _upload_and_wait(
+            client,
+            "analysis-report.txt",
+            "The model was evaluated on the test set. The results are reported in Table 2.",
+        )
+        report = client.get(f"/api/v1/analysis/{job_id}/report")
+        assert report.status_code == 200, report.text
+        assert "writing_quality" in report.json()
+        assert "validation" in report.json()
+        assert "ai_indicators" not in report.json()
+
+        removed = client.post(
+            f"/api/v1/analysis/{job_id}/ai-indicators",
+            json={},
+        )
+        assert removed.status_code == 404
