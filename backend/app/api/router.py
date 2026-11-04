@@ -1,7 +1,7 @@
 """Turnitout V2 API.
 
 Separates document ingestion, humanisation, validation, writing-quality
-analysis, originality checking and export.
+analysis and export.
 """
 from __future__ import annotations
 
@@ -28,8 +28,6 @@ from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
 
-from backend.app.originality.detector import check_originality
-from backend.app.originality.providers import DuckDuckGoProvider
 from backend.app.protected_content.masker import ProtectedContentMasker
 from backend.app.quality_analysis.ai_indicators import analyze_ai_indicators
 from backend.app.quality_analysis.analyzer import compare_texts
@@ -155,15 +153,6 @@ class HybridProposalReviewRequest(BaseModel):
     action: Literal["accept", "reject"]
 
 
-class OriginalityRequest(BaseModel):
-    confirm_search: bool = False
-    job_id: Optional[str] = Field(default=None, max_length=200)
-    text: Optional[str] = Field(default=None, max_length=100000)
-    paragraph_ids: Optional[List[str]] = Field(default=None, max_length=12)
-    max_sentences: int = Field(default=6, ge=1, le=12)
-    fetch_pages: bool = True
-
-
 class AnalysisRequest(BaseModel):
     text: Optional[str] = Field(default=None, max_length=100000)
 
@@ -204,11 +193,6 @@ async def get_settings() -> Dict[str, Any]:
         "privacy": {
             "local_only": True,
             "hosted_llm": False,
-            "originality_search": _settings.enable_web_originality,
-            "originality_note": (
-                "Originality search is opt-in. Only selected sentences are sent to the "
-                "public search provider; the document itself is never uploaded."
-            ),
         },
         "cache_entries": len(_engine.cache) if _engine else 0,
         "styles": ["academic", "professional", "natural", "concise", "executive", "preserve_voice"],
@@ -682,11 +666,9 @@ def _build_analysis(job: Job) -> Dict[str, Any]:
         "writing_quality": quality,
         "ai_indicators": ai_report,
         "validation": _validation_summary(job),
-        "originality": job.originality,
         "disclaimer": (
-            "Writing-quality and AI-indicator values are local heuristics, not a verified "
-            "AI-detector result. Originality results are a sampled public-web search and "
-            "must be reviewed manually."
+            "Writing-quality and style indicators are local heuristics, not a verified "
+            "AI-detector result or a measure of authorship."
         ),
     }
 
@@ -717,57 +699,6 @@ async def ai_indicators(job_id: str, request: AnalysisRequest) -> Dict[str, Any]
     result = analyze_ai_indicators(text)
     job.ai_indicators = result
     return result
-
-
-# ---------------------------------------------------------------- originality
-@api_router.post("/originality/check")
-async def originality_check(request: OriginalityRequest) -> Dict[str, Any]:
-    if not request.confirm_search:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Explicit confirmation is required. Only selected sentences are sent to "
-                "the public search provider; set confirm_search=true to proceed."
-            ),
-        )
-    if not _settings.enable_web_originality:
-        raise HTTPException(status_code=503, detail="Web originality search is disabled in settings.")
-
-    job: Optional[Job] = None
-    if request.text:
-        text = request.text
-    elif request.job_id:
-        job = _get_job(request.job_id)
-        if request.paragraph_ids:
-            selected = []
-            for paragraph_id in request.paragraph_ids:
-                selected.append(_get_state(job, paragraph_id).current_text)
-            text = "\n\n".join(selected)
-        else:
-            text = _combined_text(job, True)
-    else:
-        raise HTTPException(status_code=400, detail="Provide text or job_id.")
-
-    provider = DuckDuckGoProvider(
-        timeout=_settings.web_timeout,
-        user_agent=_settings.web_user_agent,
-        max_pages=_settings.web_pages_per_query,
-    )
-    try:
-        report = await check_originality(
-            text,
-            provider,
-            max_queries=min(request.max_sentences, _settings.web_max_queries),
-            pages_per_query=_settings.web_pages_per_query,
-            fetch_pages=request.fetch_pages,
-        )
-    except Exception as exc:
-        logger.exception("Originality search failed")
-        raise HTTPException(status_code=502, detail=f"Source search failed: {exc}") from exc
-
-    if job is not None:
-        job.originality = report
-    return report
 
 
 # --------------------------------------------------------------------- export
