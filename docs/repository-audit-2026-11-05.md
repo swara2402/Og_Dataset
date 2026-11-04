@@ -141,3 +141,12 @@ The follow-up code changes are in commits after the original audit snapshot. CI 
 - Added a deterministic proposal adapter that requires a matching discipline and all context terms before proposing a preferred form for a recorded variant.
 - The adapter protects citations and other masked spans, validates the candidate with the shared preservation checks, and returns a review-required proposal. It does not auto-apply terminology edits.
 - The canonical terminology inventory remains empty until real terms have appropriate provenance and expert review.
+
+
+## Corpus observations and preservation regression set
+
+- Corpus observations now include heuristic sentence-opening categories by discipline and section, in addition to sentence-length, hedge, be-auxiliary and transition counts.
+- The former passive-voice marker label was corrected: counting forms of `be` is not a syntactic passive-voice classifier. The output now calls these be-auxiliary markers and documents their limitations.
+- Added a synthetic preservation regression set covering safe mechanical edits and negative controls for uncertainty, negation, numbers, citations and technical identifiers.
+- The benchmark uses the shared preservation validator and is included in CI. It is a regression guard, not proof of semantic equivalence or expert linguistic quality.
+- The first CI attempt exposed that the standalone benchmark script did not add the repository root to `sys.path`; that runner issue was fixed in the follow-up commit. Final verification is pending on the current main SHA.
