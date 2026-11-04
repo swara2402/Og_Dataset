@@ -181,3 +181,15 @@ This is not a claim of complete platform readiness. Real corpus curation, expert
 ## Offline boundary follow-up
 
 The optional public-web originality feature has now been removed from the core application rather than merely disabled by default. The API route and DuckDuckGo provider modules are deleted, its settings are removed, the frontend API client no longer exposes a search action, and the privacy copy now describes local-only processing. A configuration regression test asserts that the web-search setting is absent. The offline guarantee still needs a broader static scan and test coverage for all outbound network-capable code paths before it can be treated as formally verified.
+
+
+## Offline boundary and morphology follow-up (latest verified code snapshot)
+
+- Removed the public-web originality route, DuckDuckGo provider modules, related runtime settings, frontend client method, analysis-page tab/action, and obsolete route tests.
+- Added architecture regression tests that assert the route/provider are absent and scan backend application imports for outbound HTTP client dependencies.
+- The offline privacy copy now states that document analysis, editing, history and exports remain local.
+- Expanded optional spaCy morphology tests for plural and singular agreement, common irregular forms (`be`, `have`, `do`), pronoun abstention, coordinated-subject abstention and ambiguous morphology.
+- Strengthened preservation validation: negation and uncertainty markers are compared with their local lexical context, not only by token counts. A regression test covers a changed predicate with the same uncertainty marker.
+- Latest verified code snapshot: `5ee1ec0fff572b165b839b6c630cdd740eec2710`.
+- CI run `41909806855`: **121 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
+- This verifies the tested source snapshot, not a guarantee that every dependency or every future code path is incapable of network access. The AST guard covers backend application imports, and the removed originality feature has no API/UI entry point.
