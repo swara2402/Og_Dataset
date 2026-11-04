@@ -30,6 +30,23 @@ def sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", text) if len(s.split()) >= 3]
 
 
+def classify_sentence_opening(words: list[str]) -> str:
+    if not words:
+        return "empty"
+    first = words[0]
+    if any(first in terms for terms in TRANSITIONS.values()):
+        return "transition_led"
+    if first in {"although", "because", "if", "since", "unless", "when", "while", "whereas"}:
+        return "subordinate_clause_led"
+    if first in {"the", "a", "an", "this", "these", "those"}:
+        return "determiner_led"
+    if first in {"we", "i", "they", "it", "he", "she", "you"}:
+        return "pronoun_led"
+    if first in {"in", "on", "at", "by", "for", "from", "with", "within", "across"}:
+        return "prepositional_phrase_led"
+    return "other"
+
+
 def load_manifest(path: Path) -> list[dict]:
     records, seen = [], set()
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -66,7 +83,7 @@ def main() -> int:
     args = parser.parse_args()
     manifest = load_manifest(args.manifest)
     stats = defaultdict(lambda: {"sentences": 0, "word_counts": [], "hedge_markers": 0,
-                                 "passive_auxiliary_markers": 0, "transition_markers": Counter()})
+                                 "be_auxiliary_markers": 0, "transition_markers": Counter(), "opening_patterns": Counter()})
     disciplines, total = Counter(), 0
     for source in manifest:
         source_path = args.input_dir / source["local_text"]
@@ -98,7 +115,8 @@ def main() -> int:
                 row["sentences"] += 1
                 row["word_counts"].append(len(words))
                 row["hedge_markers"] += sum(w in HEDGES for w in words)
-                row["passive_auxiliary_markers"] += sum(w in PASSIVE_MARKERS for w in words)
+                row["be_auxiliary_markers"] += sum(w in PASSIVE_MARKERS for w in words)
+                row["opening_patterns"][classify_sentence_opening(words)] += 1
                 for category, terms in TRANSITIONS.items():
                     row["transition_markers"][category] += sum(w in terms for w in words)
                 total += 1
@@ -114,13 +132,16 @@ def main() -> int:
                 "mean_words": round(statistics.mean(value["word_counts"]), 2),
                 "median_words": statistics.median(value["word_counts"]),
                 "hedge_markers_per_100_sentences": round(100 * value["hedge_markers"] / value["sentences"], 2),
-                "passive_auxiliary_markers_per_100_sentences": round(100 * value["passive_auxiliary_markers"] / value["sentences"], 2),
-                "transition_markers": dict(value["transition_markers"])
+                "be_auxiliary_markers_per_100_sentences": round(100 * value["be_auxiliary_markers"] / value["sentences"], 2),
+                "transition_markers": dict(value["transition_markers"]),
+                "sentence_opening_patterns": dict(value["opening_patterns"])
             } for key, value in sorted(stats.items()) if value["sentences"]
         },
         "notes": [
             "Statistics describe this corpus only; they are not writing-quality targets.",
             "Source sentences and full-text extracts are not copied into this report.",
+            "Be-auxiliary counts are coarse lexical observations, not a syntactic passive-voice classifier.",
+            "Sentence-opening categories are heuristic corpus summaries, not recommended templates.",
             "Human review is required before any observation informs an editing rule."
         ]
     }
