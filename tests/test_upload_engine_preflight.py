@@ -1,5 +1,9 @@
 """Upload preflight regression tests."""
 
+from fastapi.testclient import TestClient
+
+from backend.app.main import app
+
 
 def test_upload_does_not_persist_when_engine_is_unavailable(monkeypatch):
     import backend.app.api.router as router_module
