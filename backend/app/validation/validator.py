@@ -47,6 +47,23 @@ def content_tokens(text: str) -> List[str]:
     ]
 
 
+def _modality_signature(text: str) -> List[Tuple[str, Tuple[str, ...], Tuple[str, ...]]]:
+    """Capture local lexical context around negation and uncertainty markers."""
+    words = list(re.finditer(r"\b[\w'-]+\b", text.casefold()))
+    signatures = []
+    for marker in MODALITY_RE.finditer(text):
+        index = next(
+            (i for i, word in enumerate(words) if word.start() <= marker.start() < word.end()),
+            None,
+        )
+        if index is None:
+            continue
+        before = tuple(word.group(0) for word in words[max(0, index - 3):index])
+        after = tuple(word.group(0) for word in words[index + 1:index + 4])
+        signatures.append((marker.group(0).casefold(), before, after))
+    return signatures
+
+
 def _normalise_number(value: str) -> str:
     return value.replace(" ", "").replace(",", "").replace("%", "")
 
@@ -137,11 +154,11 @@ def validate_rewrite(
         issues.append(f"New citations/links introduced: {', '.join(added_citations[:5])}")
         critical = True
 
-    original_modality = Counter(match.group(0).casefold() for match in MODALITY_RE.finditer(original_text))
-    revised_modality = Counter(match.group(0).casefold() for match in MODALITY_RE.finditer(revised_text))
+    original_modality = _modality_signature(original_text)
+    revised_modality = _modality_signature(revised_text)
     modality_ok = original_modality == revised_modality
     if not modality_ok:
-        issues.append("Negation or uncertainty language changed.")
+        issues.append("Negation or uncertainty language, or its local scope, changed.")
         critical = True
 
     original_length = len(original_text.strip())
