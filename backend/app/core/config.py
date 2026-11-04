@@ -58,6 +58,11 @@ class Settings(BaseSettings):
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     )
 
+    # API authentication. Configure a JSON object mapping stable user IDs to
+    # high-entropy bearer tokens before exposing the API beyond localhost.
+    api_tokens: str = ""
+    api_auth_required: bool = False
+
     # Storage / CORS
     upload_dir: str = str(BASE_DIR / "backend" / "uploads")
     export_dir: str = str(BASE_DIR / "backend" / "exports")
