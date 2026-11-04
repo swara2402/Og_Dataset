@@ -58,4 +58,7 @@ def test_corpus_builder_emits_aggregates_not_source_sentences(tmp_path, monkeypa
     report = json.loads(output.read_text(encoding="utf-8"))
     assert report["source_count"] == 1
     assert report["sentence_count"] == 1
+    section = report["section_statistics"]["computer_science::abstract"]
+    assert section["sentence_opening_patterns"]["pronoun_led"] == 1
+    assert "be_auxiliary_markers_per_100_sentences" in section
     assert secret_sentence not in output.read_text(encoding="utf-8")
