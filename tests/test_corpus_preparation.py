@@ -50,7 +50,8 @@ def test_corpus_builder_emits_aggregates_not_source_sentences(tmp_path, monkeypa
     (raw / "demo.txt").write_text("[SECTION: abstract]\n" + secret_sentence, encoding="utf-8")
     manifest = tmp_path / "sources.jsonl"
     manifest.write_text(json.dumps({
-        "source_id": "P1", "title": "Demo", "url": None,
+        "source_id": "P1", "title": "Demo", "url": "https://example.test/paper",
+        "license_evidence": "https://example.test/license", "attribution": "Example authors",
         "license": "CC-BY-4.0", "text_mining_permitted": True,
         "discipline": "computer_science", "sections": ["abstract"],
         "local_text": "demo.txt"
