@@ -11,7 +11,7 @@ _ABBREVIATIONS = {
 }
 _BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+")
 _TRAILING_CLOSERS = '")\'”’]}'
-_TOKEN_RE = re.compile(r"([A-Za-z](?:\.[A-Za-z])*)$")
+_TOKEN_RE = re.compile(r"([A-Za-z]+(?:\.[A-Za-z]+)*)$")
 
 
 def split_sentences(text: str) -> list[str]:
