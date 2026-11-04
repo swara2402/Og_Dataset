@@ -10,7 +10,7 @@ from backend.app.main import app
 def test_configured_tokens_require_authentication_and_isolate_jobs():
     previous_tokens = settings.api_tokens
     previous_required = settings.api_auth_required
-    settings.api_tokens = json.dumps({"alice": "alice-test-secret", "bob": "bob-test-secret"})
+    settings.api_tokens = json.dumps({"alice": "alice-test-secret-012345678901234567890123456789", "bob": "bob-test-secret-012345678901234567890123456789"})
     settings.api_auth_required = True
     alice = {"Authorization": "Bearer alice-test-secret"}
     bob = {"Authorization": "Bearer bob-test-secret"}
