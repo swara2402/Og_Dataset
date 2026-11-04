@@ -69,6 +69,18 @@ npm run dev -- --host 127.0.0.1
 Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 <http://127.0.0.1:8000/docs>.
 
+### Security and deployment
+
+The document API is currently designed for a trusted, local-only workflow and
+has no user authentication or per-user document isolation. Keep the backend
+bound to `127.0.0.1` as shown above; do not expose port `8000` directly to the
+internet or place it behind a public reverse proxy without adding application
+authentication, authorization, rate limits, and private job ownership. The
+separate `hosted_gateway.py` protects access to an Ollama model gateway only;
+it does **not** authenticate the document API. CORS is not an authentication
+mechanism. The example configuration disables public-web originality searches
+and debug mode by default; enable optional network features deliberately.
+
 ## Tests
 
 ```bash
@@ -113,7 +125,7 @@ another rule set.
 - PDF extraction and export may lose complex layout, columns, figures, and
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
-- Jobs are held in memory and disappear when the backend restarts.
+- Jobs and review decisions are persisted in a local SQLite database. The database and uploaded originals remain on the host filesystem; configure protected storage and backups before using valuable documents. This is single-user local persistence, not multi-user isolation.
 - The Ollama adapter is opt-in, requires a locally running Ollama service and an explicitly configured model, and is never called by default.
 - The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
 - Only five synthetic, draft examples are currently provided; there are no
