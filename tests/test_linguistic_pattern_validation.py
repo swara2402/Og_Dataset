@@ -31,7 +31,7 @@ def pattern(**overrides):
 
 
 def write(path, items):
-    path.write_text("".join(json.dumps(item) + "\\n" for item in items), encoding="utf-8")
+    path.write_text("".join(json.dumps(item) + "\n" for item in items), encoding="utf-8")
 
 
 def test_accepts_reviewed_abstract_pattern(tmp_path):
