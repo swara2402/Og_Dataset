@@ -97,7 +97,15 @@ def test_latest_og_dataset_rules_policy_examples_and_profile_load():
     identifiers = {rule["id"] for rule in load_quality_rules()}
     assert dataset["version"] == "1.1.0"
     assert {"GRAMMAR-001", "WORDCHOICE-001", "EVIDENCE-001"} <= identifiers
-    assert len(dataset["examples"]) == 5
+    assert len(dataset["examples"]) == 8
+    assert {"OEI-001", "OEI-002", "OEI-003"} <= {
+        example["example_id"] for example in dataset["examples"]
+    }
+    assert all(
+        example["review_status"] == "draft"
+        for example in dataset["examples"]
+        if example["example_id"].startswith("OEI-")
+    )
     assert any(example["edit_scope"] == "none" for example in dataset["examples"])
     assert "AgriSense" in dataset["reference_profile"]
     assert dataset["policy"]["default_strategy"] == "minimal_edit"
