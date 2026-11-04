@@ -27,6 +27,8 @@ jobs:
         working-directory: frontend
         run: |
           npm install --save-dev --save-exact "vite@8.3.5" "@vitejs/plugin-react@6.2.1" "@typescript-eslint/eslint-plugin@8.72.1" "@typescript-eslint/parser@8.72.1"
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.overrides={...(p.overrides||{}),'@typescript-eslint/typescript-estree':{...(p.overrides?.['@typescript-eslint/typescript-estree']||{}),minimatch:'^11.0.1'}}; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\\n');"
+          npm install
           npm audit --json > /tmp/npm-audit.json || true
           node -e "const a=require('/tmp/npm-audit.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable})); if ((a.metadata?.vulnerabilities?.total || 0) > 0) process.exit(1);"
       - name: Require clean dependency audit
