@@ -94,7 +94,8 @@ def validate_rewrite(
 
     original_placeholders = PLACEHOLDER_RE.findall(masked_original)
     revised_placeholders = PLACEHOLDER_RE.findall(masked_revised)
-    placeholders_ok = Counter(original_placeholders) == Counter(revised_placeholders)
+    # Presence and order both matter for protected spans.
+    placeholders_ok = original_placeholders == revised_placeholders
     if not placeholders_ok:
         missing, added = _counter_diff(original_placeholders, revised_placeholders)
         if missing:
