@@ -78,6 +78,8 @@ mapping stable user IDs to unique, high-entropy secrets:
 ```bash
 export OG_API_TOKENS='{"alice":"REPLACE_WITH_A_LONG_RANDOM_SECRET","bob":"REPLACE_WITH_ANOTHER_LONG_RANDOM_SECRET"}'
 export OG_API_AUTH_REQUIRED=true
+# Optional: comma-separated user IDs allowed to change global settings and clear cache.
+export OG_API_ADMIN_USERS='alice'
 ```
 
 Send the selected token on every API request:
@@ -92,6 +94,12 @@ another user's job return `404`. Existing SQLite records without an owner
 are treated as belonging to the legacy `local` account and are not visible
 to configured token users. Use separate token secrets for each user; do not
 share a single token across people.
+
+Global settings changes and cache clearing are administrator-only when bearer
+authentication is enabled. Set `OG_API_ADMIN_USERS` to a comma-separated list
+of configured user IDs (for example `alice`). If it is empty, token users
+cannot change global settings or clear the shared cache. Trusted local mode
+retains its single-user administrator behavior.
 
 The API also applies a sliding-window limit of 120 requests per minute per
 authenticated owner and direct client IP by default. Change
