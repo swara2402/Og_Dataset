@@ -179,3 +179,32 @@ def test_unimplemented_style_transformation_is_rejected():
         assert "not implemented yet" in str(exc)
     else:
         raise AssertionError("Unsupported style transformations must be rejected")
+
+def test_runtime_terminology_rejects_unapproved_licence(monkeypatch, tmp_path):
+    import json
+    import shutil
+    import pytest
+
+    source = adaptive_editing._DATASET_ROOT
+    copied = tmp_path / "knowledge_base"
+    shutil.copytree(source, copied)
+    monkeypatch.setattr(adaptive_editing, "_DATASET_ROOT", copied)
+    record = {
+        "term_id": "TERM-BAD",
+        "term": "sample term",
+        "definition": "A test-only definition.",
+        "disciplines": ["computer_science"],
+        "contexts": ["test context"],
+        "context_terms": ["test"],
+        "variants": ["sample-term"],
+        "preferred_form": "sample term",
+        "avoid_substitutions": [],
+        "usage_note": "Test fixture.",
+        "source": {"kind": "expert_curated", "reference": "test", "license": "UNKNOWN", "attribution": "test"},
+        "review_status": "reviewed",
+        "reviewer_id": "test-reviewer",
+    }
+    with (copied / "datasets" / "terminology.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(record) + "\n")
+    with pytest.raises(RuntimeError, match="unapproved licence"):
+        adaptive_editing.load_terminology()
