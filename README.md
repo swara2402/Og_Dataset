@@ -34,7 +34,7 @@ optimize for AI-detector evasion or promise detector scores.
 
 ## Setup
 
-Requirements: Python 3.12+ and Node.js 18+.
+Requirements: Python 3.12+ and Node.js 20.19+ (or 22.12+) with npm.
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -65,6 +65,34 @@ npm run dev -- --host 127.0.0.1
 
 Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 <http://127.0.0.1:8000/docs>.
+
+### One-command local launcher
+
+After installing dependencies once, start both local services from the repository
+root with:
+
+```bash
+bash scripts/run_local.sh
+```
+
+The launcher checks the supported Python/Node versions and required local
+packages, binds both services to loopback only, waits for the API and UI to
+respond, and stops both processes when you press Ctrl+C. It does not install
+packages or download models at launch time. The Vite API proxy also targets
+`127.0.0.1` explicitly so it matches the backend's loopback binding.
+
+With the services running, verify the local-only contract:
+
+```bash
+python3 scripts/check_local.py
+```
+
+This acceptance smoke check contacts only `127.0.0.1`/localhost, checks that
+the frontend responds, verifies that the deterministic rule engine is ready,
+and confirms `local_only=true` and `hosted_llm=false`. If API authentication
+is enabled, provide the configured token through `OG_API_SMOKE_TOKEN` for
+this check only. This is a smoke check, not a substitute for testing document
+round-trips in Word, PDF readers, and LaTeX toolchains.
 
 ### Security and deployment
 
