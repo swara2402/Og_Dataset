@@ -1,0 +1,75 @@
+{
+  "version": "1.1.0",
+  "purpose": "Diagnose real writing-quality issues and apply the smallest safe edit; leave good writing unchanged.",
+  "default_strategy": "minimal_edit",
+  "decision_order": [
+    "Read the complete paragraph and relevant document context.",
+    "Protect facts, claims, citations, quotations, numbers, named entities, technical terminology, and author intent.",
+    "Identify a specific grammar, precision, clarity, phrase, repetition, or coherence issue.",
+    "Choose the smallest intervention that resolves the identified issue.",
+    "Prefer a local word or phrase edit over sentence restructuring when both solve the issue equally well.",
+    "If the meaning or best edit is uncertain, preserve the original and return a review flag.",
+    "Validate the result against the source and record the reason for every material change."
+  ],
+  "edit_scope_priority": ["word", "phrase", "sentence", "paragraph"],
+  "levels": {
+    "minimal": {
+      "when": "The text is already clear and coherent, with only local issues or no issues.",
+      "allowed": [
+        "Return the original unchanged when no concrete improvement is needed.",
+        "Correct clear grammar, spelling, punctuation, and agreement errors.",
+        "Replace an imprecise or awkward word with a contextually accurate alternative.",
+        "Trim a genuinely redundant phrase.",
+        "Fix a local phrase without changing the surrounding sentence structure."
+      ],
+      "avoid": [
+        "Rewriting a sentence merely to make it different.",
+        "Changing accurate words solely to increase vocabulary variation.",
+        "Adding filler, transitions, intensifiers, or unsupported detail.",
+        "Changing valid author-specific phrasing without a quality reason."
+      ]
+    },
+    "moderate": {
+      "when": "Several local issues affect clarity or readability and cannot be resolved with word- or phrase-level edits alone.",
+      "allowed": [
+        "Make a targeted sentence-level correction while retaining the original proposition.",
+        "Split or combine sentences only when this clearly improves comprehension.",
+        "Clarify a supported relationship between ideas.",
+        "Remove repeated information without removing distinct qualifications."
+      ],
+      "avoid": [
+        "Changing the strength or certainty of claims.",
+        "Inventing examples, explanations, data, or citations.",
+        "Replacing domain terminology with approximate synonyms.",
+        "Rephrasing unaffected portions of the paragraph."
+      ]
+    },
+    "substantial": {
+      "when": "The paragraph is materially difficult to follow because its order, focus, or explanation is unclear.",
+      "allowed": [
+        "Offer a proposed paragraph reorganisation using only source-supported information.",
+        "Separate unrelated ideas into focused paragraphs.",
+        "Identify missing context as a question or author note.",
+        "Show a proposed revision and change summary for human approval."
+      ],
+      "avoid": [
+        "Filling evidence gaps with invented material.",
+        "Changing the author's position or argument.",
+        "Reordering evidence so it appears to support a different claim.",
+        "Applying substantial rewriting automatically without review."
+      ]
+    }
+  },
+  "fallback": {
+    "when": "Meaning, source evidence, or the correct interpretation is uncertain.",
+    "action": "Do not make a substantive change. Preserve the original and return a focused clarification or review note."
+  },
+  "validation": [
+    "Compare numbers, dates, units, names, technical terms, citations, quotations, and equations.",
+    "Check negation, modality, uncertainty, limitations, causal claims, and comparison direction.",
+    "Flag factual additions that cannot be traced to the source.",
+    "Record the applied rule IDs, edit scope, and concise rationale.",
+    "Keep detector scores out of editing objectives, rule selection, and training labels."
+  ],
+  "output_modes": ["revised_text", "change_summary", "review_flags", "unchanged_text"]
+}

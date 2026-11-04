@@ -1,0 +1,63 @@
+"""Runtime configuration for Turnitout V2.
+
+All document processing is local by default. The only network feature is the
+explicitly opt-in originality search, which is disabled unless the user runs a
+search from the UI/API.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import List
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BASE_DIR = Path(__file__).resolve().parents[3]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=str(BASE_DIR / ".env"), extra="ignore")
+
+    # Rule-based engine settings (no LLM dependencies)
+    rule_engine_enabled: bool = True
+    rule_verbose_logging: bool = False
+
+    # Legacy processing settings remain for API compatibility; the rule engine
+    # evaluates the complete document in one deterministic pass.
+    turnitout_batch_size: int = 8
+    turnitout_max_workers: int = 1
+    turnitout_max_retries: int = 0
+    turnitout_max_passes: int = 1
+    turnitout_max_paragraph_chars: int = 0
+    turnitout_min_paragraph_chars: int = 1
+    cache_max_size: int = 1000
+    max_file_size_mb: int = 25
+
+    # Originality / source matching (explicit user action only)
+    enable_web_originality: bool = True
+    web_timeout: float = 12.0
+    web_max_queries: int = 6
+    web_pages_per_query: int = 2
+    web_user_agent: str = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    )
+
+    # Storage / CORS
+    upload_dir: str = str(BASE_DIR / "backend" / "uploads")
+    export_dir: str = str(BASE_DIR / "backend" / "exports")
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "http://localhost:4173,http://127.0.0.1:4173"
+    )
+    debug: bool = True
+
+    @property
+    def cors_origin_list(self) -> List[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+
+settings = Settings()
+
+Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+Path(settings.export_dir).mkdir(parents=True, exist_ok=True)

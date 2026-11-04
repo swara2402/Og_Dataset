@@ -1,0 +1,23 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    # Do not publish 11434 to the public host. It is reachable only by gateway.
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    environment:
+      OLLAMA_UPSTREAM_URL: http://ollama:11434
+      TURNITOUT_GATEWAY_API_KEY: ${TURNITOUT_GATEWAY_API_KEY:?Set a long random key in .env}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
