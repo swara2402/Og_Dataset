@@ -223,25 +223,6 @@ export interface Recommendation {
   suggestion: string;
 }
 
-export interface AIIndicator {
-  id: string;
-  label: string;
-  score: number;
-  severity: string;
-  description: string;
-  evidence: string[];
-}
-
-export interface AIReport {
-  detector_available: boolean;
-  detector_note: string;
-  indicator_score: number | null;
-  band: string;
-  summary: string;
-  indicators: AIIndicator[];
-  metrics: Record<string, number>;
-}
-
 export interface AnalysisReport {
   job_id: string;
   filename: string;
@@ -253,7 +234,6 @@ export interface AnalysisReport {
     revised: QualityMetrics;
     deltas: Record<string, number>;
   };
-  ai_indicators: AIReport;
   validation: {
     protected_content_preserved: boolean;
     numbers_preserved: boolean;
