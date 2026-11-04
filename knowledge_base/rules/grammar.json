@@ -1,0 +1,21 @@
+{
+  "version": "1.1.0",
+  "rule_set": "grammar",
+  "rules": [
+    {
+      "id": "GRAMMAR-001",
+      "category": "grammar",
+      "name": "Correct grammatical errors without changing the claim",
+      "guidance": "Correct clear agreement, tense, article, preposition, spelling, and punctuation errors while retaining meaning.",
+      "apply_when": [
+        "A clear grammatical or mechanical error is present."
+      ],
+      "do_not_apply_when": [
+        "The construction is a valid discipline-specific convention."
+      ],
+      "preservation": [
+        "Keep technical terms, quantities, names, and relationships unchanged."
+      ]
+    }
+  ]
+}
