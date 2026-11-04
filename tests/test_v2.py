@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from docx import Document as DocxDocument
 
 from backend.app.core.config import Settings
-from backend.app.core.jobs import Job, ParagraphState, job_store
+from backend.app.core.jobs import Job, ParagraphState, VersionEntry, job_store
 from backend.app.document_processing.parser import (
     DocumentParagraph,
     DocumentParser,
@@ -70,6 +70,37 @@ def _job(paragraphs, *, filename="sample.txt", file_type="txt", original_bytes=b
         paragraphs=states,
         original_bytes=original_bytes,
     )
+
+
+def test_rejected_hybrid_suggestion_stays_in_history_but_is_not_active_proposal():
+    state = ParagraphState(
+        id="p-rejected",
+        index=0,
+        original_text="The original paragraph remains unchanged.",
+        paragraph_type="body",
+        category="ordinary_prose",
+        section=None,
+        eligible=True,
+    )
+    rejected_text = "The rejected alternative wording."
+    state.versions.append(
+        VersionEntry(
+            version=1,
+            text=rejected_text,
+            masked_text=rejected_text,
+            pass_number=1,
+            source="hybrid-rejected:local_llm",
+        )
+    )
+    state.review_status = "rejected"
+
+    serialized = state.to_dict()
+
+    assert serialized["proposal"] is None
+    assert serialized["revised"] == "The original paragraph remains unchanged."
+    assert serialized["review_status"] == "rejected"
+    assert serialized["versions"][-1]["text"] == rejected_text
+    assert serialized["versions"][-1]["source"] == "hybrid-rejected:local_llm"
 
 
 def test_classifier_does_not_treat_prose_mention_as_heading():
