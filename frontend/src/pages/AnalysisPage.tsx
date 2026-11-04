@@ -249,9 +249,9 @@ export default function AnalysisPage() {
               <p className="text-xs text-neutral-500">paragraphs checked</p>
             </div>
             <div className="card">
-              <div className="mb-2 flex items-center gap-2 text-sm text-neutral-500"><BarChart3 size={16} /> AI indicators</div>
-              <p className="text-2xl font-bold">{ai_indicators.indicator_score.toFixed(1)}%</p>
-              <p className="text-xs text-neutral-500">{ai_indicators.band.replace(/_/g, ' ')}</p>
+              <div className="mb-2 flex items-center gap-2 text-sm text-neutral-500"><BarChart3 size={16} /> AI detection</div>
+              <p className="text-2xl font-bold">Not connected</p>
+              <p className="text-xs text-neutral-500">No authorship verdict is generated</p>
             </div>
           </div>
 
@@ -313,21 +313,22 @@ export default function AnalysisPage() {
                     </div>
 
                     <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
-                      <h3 className="mb-2 font-semibold">AI-writing indicators</h3>
+                      <h3 className="mb-2 font-semibold">Style observations (not AI detection)</h3>
                       <p className="mb-3 text-sm text-neutral-500 dark:text-neutral-400">{ai_indicators.detector_note}</p>
-                      <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-300">{ai_indicators.summary}</p>
-                      <div className="space-y-2">
-                        {ai_indicators.indicators.slice(0, 6).map((indicator) => (
-                          <div key={indicator.id} className="flex items-center justify-between text-sm">
-                            <span className="text-neutral-600 dark:text-neutral-400" title={indicator.description}>{indicator.label}</span>
-                            <span className="flex items-center gap-2">
-                              <span className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
-                                <span className={`block h-full rounded-full ${barColor(indicator.score)}`} style={{ width: `${Math.round(indicator.score)}%` }} />
-                              </span>
-                              <span className="w-10 text-right text-xs text-neutral-500">{Math.round(indicator.score)}%</span>
-                            </span>
+                      <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        These observations point to wording or structure that an author may want to review. They do not identify who wrote the text.
+                      </p>
+                      <div className="space-y-3">
+                        {ai_indicators.indicators.filter((indicator) => indicator.evidence.length > 0).slice(0, 6).map((indicator) => (
+                          <div key={indicator.id} className="border-b border-neutral-100 pb-2 last:border-0 last:pb-0 dark:border-neutral-700">
+                            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{indicator.label}</p>
+                            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{indicator.description}</p>
+                            <p className="mt-1 text-xs text-neutral-500">Observed: {indicator.evidence.join(', ')}</p>
                           </div>
                         ))}
+                        {ai_indicators.indicators.every((indicator) => indicator.evidence.length === 0) && (
+                          <p className="text-sm text-neutral-500">No style observations to display.</p>
+                        )}
                       </div>
                     </div>
                   </section>
