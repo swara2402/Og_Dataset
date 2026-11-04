@@ -47,7 +47,7 @@ def test_text_document_upload_review_accept_and_export_round_trip():
             if item["original"] == original
         )
         assert paragraph["proposal"] == expected
-        assert paragraph["review_status"] == "unchanged"
+        assert paragraph["review_status"] == "pending"
 
         results = client.get(f"/api/v1/processing/{job_id}/results")
         assert results.status_code == 200, results.text
