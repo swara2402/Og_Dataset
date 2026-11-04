@@ -39,3 +39,16 @@ The report aggregates sentence counts, sentence-length distributions, section co
 ## Revision pairs
 
 Human-edited pairs belong in a separate dataset and require documented source rights, an edit rationale, protected meaning/claims, and explicit human approval. Synthetic examples must remain labelled synthetic. Unreviewed pairs are never promoted into approved examples automatically.
+
+
+## Manifest validation and local ingestion limits
+
+Each JSONL source record is checked against `knowledge_base/schemas/corpus_source.schema.json`. The manifest requires a unique source ID, title, URL field (which may be null for synthetic fixtures), licence, explicit `text_mining_permitted: true`, discipline, supported section labels and a plain `.txt` filename. Optional licence-evidence and attribution fields should be supplied for real sources. The script rejects unapproved licences, duplicate IDs, duplicate/unsupported sections, path traversal, symlinked source files and files larger than 50 MB by default.
+
+Validate the manifest without reading source files:
+
+```bash
+python scripts/prepare_corpus.py --validate-only
+```
+
+The corpus remains empty until real source permissions and attribution have been checked. A manifest flag is an auditable declaration, not independent proof that a licence permits text mining.
