@@ -173,6 +173,7 @@ The tests use local fixtures and do not call external model services.
 | GET | `/api/v1/processing/{job_id}/status` | Processing progress |
 | GET | `/api/v1/processing/{job_id}/results` | All paragraphs, proposals, and versions |
 | POST | `/api/v1/processing/{job_id}/review` | Accept or reject a paragraph change |
+| POST | `/api/v1/processing/{job_id}/restore-version` | Restore a recorded paragraph version |
 | POST | `/api/v1/processing/{job_id}/cancel` | Cancel processing |
 | GET | `/api/v1/analysis/{job_id}/report` | Writing-quality and validation report |
 | POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |
