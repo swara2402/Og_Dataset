@@ -193,3 +193,12 @@ The optional public-web originality feature has now been removed from the core a
 - Latest verified code snapshot: `5ee1ec0fff572b165b839b6c630cdd740eec2710`.
 - CI run `41909806855`: **121 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
 - This verifies the tested source snapshot, not a guarantee that every dependency or every future code path is incapable of network access. The AST guard covers backend application imports, and the removed originality feature has no API/UI entry point.
+
+
+### Follow-up verification after offline cleanup
+
+- Removed the legacy per-job originality field from SQLite snapshot serialization and API workflow reset logic; old snapshots remain readable because unknown legacy keys are ignored during reconstruction.
+- Removed obsolete originality UI state from the Analysis page and replaced the Settings disclosure with a local-only notice.
+- Updated API metadata so it no longer advertises originality checking.
+- Current verified code snapshot: `6d432966e05b1363381193200be1bb5534ce3664`.
+- CI run `41910037558`: **121 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
