@@ -36,17 +36,18 @@ optimize for AI-detector evasion or promise detector scores.
 
 Requirements: Python 3.12+ and Node.js 20.19+ (or 22.12+) with npm.
 
+Initial dependency installation needs access to the Python and npm package
+registries. After installation, the application can be started and used locally
+without a hosted model or remote document service.
+
 ```bash
-python3 -m pip install -r requirements.txt
-# Optional: install spaCy for local linguistic context analysis
-# Optional NLP dependencies and model (install only when enabling spaCy):
-# python3 -m pip install -r requirements-nlp.txt
-# python3 -m spacy download en_core_web_sm
-cd frontend
-npm ci
-npm run build
-cd ..
+bash scripts/install_local.sh
 ```
+
+This creates a project-local `.venv`, installs the pinned frontend lockfile
+dependencies, and installs backend requirements. Optional spaCy support is not
+installed by default; enable it only if you need the optional local morphology
+proposals, and download its model once before going offline.
 
 ## Run
 
