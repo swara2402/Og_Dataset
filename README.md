@@ -42,7 +42,6 @@ python3 -m pip install -r requirements.txt
 # Optional NLP dependencies and model (install only when enabling spaCy):
 # python3 -m pip install -r requirements-nlp.txt
 # python3 -m spacy download en_core_web_sm
-# python3 -m spacy download en_core_web_sm
 cd frontend
 npm install
 npm run build
