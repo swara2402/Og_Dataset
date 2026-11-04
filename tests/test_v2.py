@@ -12,6 +12,7 @@ import io
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import HTTPException
 from docx import Document as DocxDocument
 
 from backend.app.core.config import Settings
@@ -420,48 +421,72 @@ def test_hybrid_proposal_review_persists_acceptance_and_rejects_protected_change
     from backend.app.api.router import HybridProposalReviewRequest
 
     original = "The model reports 67% accuracy and cites Smith (2023)."
-    job = _job([_paragraph("hybrid-p1", original)])
-    job.job_id = "hybrid-review-test"
     engine = HumanisationEngine(Settings())
-    asyncio.run(engine.process_job(job))
-    job_store.create(job)
 
+    accepted_job = _job([_paragraph("hybrid-p1", original)])
+    accepted_job.job_id = "hybrid-review-accept-test"
+    asyncio.run(engine.process_job(accepted_job))
+    job_store.create(accepted_job)
+    accepted_state = accepted_job.paragraphs[0]
+    current = accepted_state.current_text
     accepted = asyncio.run(
         router.review_hybrid_proposal(
-            job.job_id,
+            accepted_job.job_id,
             HybridProposalReviewRequest(
                 paragraph_id="hybrid-p1",
                 proposal_id="proposal-1",
-                original_text=original,
-                suggested_text="The model reports 67% accuracy and cites Smith (2023).",
+                original_text=current,
+                suggested_text="The model achieves 67% accuracy, as reported by Smith (2023).",
                 source_engine="rule_engine",
-                explanation="A checked proposal",
+                explanation="Clarifies the result statement.",
                 action="accept",
             ),
         )
     )
     assert accepted["decision"] == "accept"
     assert accepted["paragraph"]["review_status"] == "accepted"
+    assert accepted["paragraph"]["revised"] == "The model achieves 67% accuracy, as reported by Smith (2023)."
     assert accepted["paragraph"]["versions"][-1]["source"] == "hybrid:rule_engine"
 
     rejected_job = _job([_paragraph("hybrid-p2", original)])
     rejected_job.job_id = "hybrid-review-reject-test"
     asyncio.run(engine.process_job(rejected_job))
     job_store.create(rejected_job)
+    rejected_state = rejected_job.paragraphs[0]
+    rejected_original = rejected_state.current_text
     rejected = asyncio.run(
         router.review_hybrid_proposal(
             rejected_job.job_id,
             HybridProposalReviewRequest(
                 paragraph_id="hybrid-p2",
                 proposal_id="proposal-2",
-                original_text=original,
-                suggested_text="The model reports 99% accuracy and cites Smith (2023).",
+                original_text=rejected_original,
+                suggested_text="The model reports 67% accuracy and cites Smith (2023) clearly.",
                 source_engine="local_llm",
-                action="accept",
+                action="reject",
             ),
         )
-    ) if False else None
-    assert rejected is None
+    )
+    assert rejected["decision"] == "reject"
+    assert rejected["paragraph"]["review_status"] == "rejected"
+    assert rejected["paragraph"]["revised"] == rejected_original
+    assert rejected["paragraph"]["versions"][-1]["source"] == "hybrid-rejected:local_llm"
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            router.review_hybrid_proposal(
+                rejected_job.job_id,
+                HybridProposalReviewRequest(
+                    paragraph_id="hybrid-p2",
+                    proposal_id="proposal-3",
+                    original_text=rejected_original,
+                    suggested_text=rejected_original.replace("67%", "99%"),
+                    source_engine="local_llm",
+                    action="accept",
+                ),
+            )
+        )
+    assert exc.value.status_code == 422
 
 
 def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
