@@ -23,6 +23,7 @@ from backend.app.document_processing.parser import DocumentParser
 from backend.app.engine.pipeline import HybridAnalysisPipeline
 from backend.app.providers.spacy_provider import SpacyContextProvider
 from backend.app.engine.spacy_rule_adapter import SpacyMorphologyProposalEngine
+from backend.app.engine.terminology_adapter import TerminologyProposalEngine
 from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
@@ -807,6 +808,8 @@ async def analyze_paragraph(request: ParagraphAnalysisRequest) -> Dict[str, Any]
     engine = _require_engine()
     context_providers = []
     proposal_engines = []
+    if engine.terminology:
+        proposal_engines.append(TerminologyProposalEngine(engine.terminology))
 
     if request.include_nlp:
         if not _settings.spacy_enabled:
