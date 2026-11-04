@@ -317,19 +317,37 @@ class SQLiteJobStore(JobStore):
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS jobs (job_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)"
             )
-            rows = connection.execute("SELECT payload FROM jobs ORDER BY created_at DESC LIMIT ?", (self.max_jobs,)).fetchall()
+            rows = connection.execute(
+                "SELECT payload FROM jobs ORDER BY created_at DESC LIMIT ?", (self.max_jobs,)
+            ).fetchall()
+            interrupted = connection.execute(
+                "SELECT payload FROM jobs WHERE payload LIKE '%\\\"status\\\":\\\"processing\\\"%' "
+                "OR payload LIKE '%\\\"status\\\":\\\"queued\\\"%'"
+            ).fetchall()
+        for (payload,) in interrupted:
+            try:
+                job = self._recover_interrupted(self._decode(payload))
+                self.save(job)
+            except Exception:
+                continue
         for (payload,) in rows:
             try:
-                job = self._decode(payload)
-                if job.status in {"queued", "processing"}:
-                    job.status = "failed"
-                    job.error = "Processing was interrupted by an application restart. The saved document and edits are available for review."
-                    job.finished_at = time.time()
-                    self.save(job)
+                job = self._recover_interrupted(self._decode(payload))
                 self._jobs[job.job_id] = job
             except Exception:
                 # A corrupt snapshot must not prevent the local editor from starting.
                 continue
+
+    @staticmethod
+    def _recover_interrupted(job: Job) -> Job:
+        if job.status in {"queued", "processing"}:
+            job.status = "failed"
+            job.error = (
+                "Processing was interrupted by an application restart. "
+                "The saved document and edits are available for review."
+            )
+            job.finished_at = time.time()
+        return job
 
     def _connect(self):
         connection = self._sqlite3.connect(str(self.db_path), timeout=10)
@@ -442,8 +460,11 @@ class SQLiteJobStore(JobStore):
         if not row:
             return None
         try:
-            job = self._decode(row[0])
-            self._jobs[job_id] = job
+            job = self._recover_interrupted(self._decode(row[0]))
+            if job.status == "failed" and job.error and "interrupted by an application restart" in job.error:
+                self.save(job)
+            else:
+                self._jobs[job_id] = job
             return job
         except Exception:
             return None
@@ -458,13 +479,28 @@ class SQLiteJobStore(JobStore):
         return cursor.rowcount > 0
 
     def _prune(self) -> None:
-        removable = sorted(
-            (job for job in self._jobs.values() if job.status not in {"processing", "queued"}),
-            key=lambda item: item.created_at,
-        )
-        while len(self._jobs) > self.max_jobs and removable:
-            job = removable.pop(0)
-            self.delete(job.job_id)
+        # Prune the persistent table, not just the in-memory cache; otherwise
+        # old completed snapshots accumulate indefinitely across restarts.
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT job_id, payload FROM jobs ORDER BY created_at ASC"
+            ).fetchall()
+            excess = len(rows) - self.max_jobs
+            if excess <= 0:
+                return
+            for job_id, payload in rows:
+                if excess <= 0:
+                    break
+                try:
+                    job = self._decode(payload)
+                except Exception:
+                    # Leave unreadable snapshots untouched for manual recovery.
+                    continue
+                if job.status in {"processing", "queued"}:
+                    continue
+                connection.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+                self._jobs.pop(job_id, None)
+                excess -= 1
 
 
 job_store = SQLiteJobStore()
