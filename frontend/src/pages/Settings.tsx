@@ -155,13 +155,6 @@ export default function SettingsPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Local Ollama suggestions</span>
-                <span className={engineStatus?.ollama.enabled && engineStatus.ollama.configured ? 'font-medium text-green-600' : 'text-neutral-500'}>
-                  {engineStatus?.ollama.enabled && engineStatus.ollama.configured
-                    ? ('Enabled · ' + engineStatus.ollama.model)
-                    : 'Disabled or not configured'}
-                </span>
-              </div>
               <p className="border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
                 spaCy is optional and runs locally when installed and enabled. It provides linguistic context observations; deterministic Python rules remain responsible for all edits.
               </p>
