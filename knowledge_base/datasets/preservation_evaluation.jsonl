@@ -1,0 +1,7 @@
+{"case_id":"POS-001","case_type":"positive_control","original_text":"The results shows improvement.","candidate_text":"The results show improvement.","expected_valid":true}
+{"case_id":"POS-002","case_type":"positive_control","original_text":"The result was recorded ,and stored.","candidate_text":"The result was recorded, and stored.","expected_valid":true}
+{"case_id":"NEG-001","case_type":"negative_control","original_text":"The method may improve accuracy.","candidate_text":"The method improves accuracy.","expected_valid":false}
+{"case_id":"NEG-002","case_type":"negative_control","original_text":"The system achieved 92% accuracy.","candidate_text":"The system achieved 95% accuracy.","expected_valid":false}
+{"case_id":"NEG-003","case_type":"negative_control","original_text":"The result was reported [12].","candidate_text":"The result was reported.","expected_valid":false}
+{"case_id":"NEG-004","case_type":"negative_control","original_text":"The method does not improve accuracy.","candidate_text":"The method does improve accuracy.","expected_valid":false}
+{"case_id":"NEG-005","case_type":"negative_control","original_text":"The scanner detects CVE-2024-1234.","candidate_text":"The scanner detects CVE-2024-4321.","expected_valid":false}
