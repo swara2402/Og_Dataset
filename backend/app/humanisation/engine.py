@@ -239,6 +239,27 @@ class RuleBasedEditingEngine:
                     rules.append("GRAMMAR-001")
                 changes.append("Collapsed repeated horizontal whitespace.")
 
+        # Only shorten a small allowlist of objectively redundant phrases.
+        # These are local edits and remain subject to author review.
+        if "wordy_phrase" in issues:
+            concise_phrases = (
+                (r"\bin order to\b", "to"),
+                (r"\bdue to the fact that\b", "because"),
+                (r"\bat this point in time\b", "now"),
+                (r"\bin the event that\b", "if"),
+            )
+            for pattern, replacement in concise_phrases:
+                candidate, count = re.subn(pattern, replacement, revised, flags=re.IGNORECASE)
+                if count:
+                    if revised[:1].isupper():
+                        candidate = candidate[:1].upper() + candidate[1:]
+                    revised = candidate
+                    if "WORDINESS-001" not in rules:
+                        rules.append("WORDINESS-001")
+                    changes.append(
+                        f"Shortened a redundant phrase ({count} occurrence(s)) while preserving its stated relationship."
+                    )
+
         # Dataset additions may define explicitly contextualized word choices.
         # Draft examples and unqualified rule guidance are never treated as synonym lists.
         word_choices = []
