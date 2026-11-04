@@ -113,10 +113,12 @@ def test_documented_environment_variable_names_are_loaded():
         _env_file=None,
         OG_API_TOKENS='{"user":"test-secret-012345678901234567890123456789"}',
         OG_API_AUTH_REQUIRED=True,
+        OG_API_ADMIN_USERS="alice,bob",
         OG_API_RATE_LIMIT_PER_MINUTE=17,
     )
     assert configured.api_tokens.startswith('{')
     assert configured.api_auth_required is True
+    assert configured.api_admin_users == "alice,bob"
     assert configured.api_rate_limit_per_minute == 17
 
 
