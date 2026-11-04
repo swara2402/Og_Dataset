@@ -505,8 +505,8 @@ class LatexParser:
     def _classify(block: str) -> str:
         value = block.strip()
         if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|gather\*?|multline\*?|math|displaymath|flalign\*?)\}", value):
-        if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
+        if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
         if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt)\}", value):
             return "code"
