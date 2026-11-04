@@ -15,7 +15,7 @@ as approved rewrite pairs.
 
 ## Features
 
-- Upload DOCX, PDF, TXT, and Markdown documents.
+- Upload DOCX, PDF, TXT, Markdown, and LaTeX (`.tex`) documents.
 - Analyze every extracted paragraph in document order; retain headings,
   references, tables, equations, and other protected content unchanged.
 - Prefer local word- or phrase-level mechanical corrections. Do not rotate
@@ -27,7 +27,7 @@ as approved rewrite pairs.
 - Accept or reject individual proposals; exports include accepted edits and
   retain original text for pending or rejected suggestions.
 - Preserve DOCX paragraph/table structure where supported; provide PDF, text,
-  and Markdown export.
+  Markdown, and source-preserving LaTeX export.
 - Keep analysis and exports local. Public-web originality search is separate
   and opt-in.
 
