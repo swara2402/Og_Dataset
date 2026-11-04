@@ -210,7 +210,7 @@ export default function SettingsPage() {
                   <HardDrive size={16} /> Local processing
                 </p>
                 <p className="text-green-700 dark:text-green-400">
-                  The editing pipeline needs no Ollama, hosted LLM or API-based model.
+                  The editing pipeline uses local deterministic rules and does not call external model services.
                 </p>
               </div>
               <div className="flex items-center gap-2 border-t border-neutral-200 pt-3 dark:border-neutral-700">
