@@ -41,3 +41,21 @@ def test_public_web_originality_is_absent_from_offline_core():
     frontend_api = (ROOT / "frontend/src/contexts/APIContext.tsx").read_text(encoding="utf-8")
     assert "runOriginality" not in frontend_api
     assert "/originality/check" not in frontend_api
+
+def test_backend_application_has_no_outbound_http_client_imports():
+    import ast
+
+    blocked_roots = {"requests", "aiohttp", "httpx"}
+    blocked_modules = {"urllib.request", "socket"}
+    offenders = []
+    for source in (ROOT / "backend/app").rglob("*.py"):
+        tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split(".")[0] in blocked_roots or alias.name in blocked_modules:
+                        offenders.append(f"{source.relative_to(ROOT)}:{node.lineno}:{alias.name}")
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                if node.module.split(".")[0] in blocked_roots or node.module in blocked_modules:
+                    offenders.append(f"{source.relative_to(ROOT)}:{node.lineno}:{node.module}")
+    assert offenders == []
