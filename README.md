@@ -103,5 +103,6 @@ another rule set.
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
 - Jobs are held in memory and disappear when the backend restarts.
-- Only five synthetic, draft examples are currently provided; there are no
-  verified human revision pairs to support broad automatic rewriting.
+- The dataset includes five synthetic draft examples and three owner-supplied
+  OEI revision pairs. The supplied pairs remain draft reference material; they
+  are not independently verified or used as automatic rewrite templates.
