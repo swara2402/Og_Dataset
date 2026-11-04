@@ -123,34 +123,52 @@ class ParagraphClassifier:
     
     def _is_technical_explanation(self, text: str) -> Tuple[bool, float]:
         """Determine if text is a technical explanation."""
-        text_lower = text.lower()
-        words = set(text_lower.split())
-        matches = len(words & TECHNICAL_TERMS)
-        total_words = len(text.split())
-        
+        words = re.findall(r"\b[a-z][a-z0-9-]*\b", text.lower())
+        normalized = set(words)
+        normalized.update(
+            word[:-1] for word in words if word.endswith("s") and len(word) > 3
+        )
+        matches = len(normalized & TECHNICAL_TERMS)
+        total_words = len(words)
+
         if total_words == 0:
             return False, 0.0
-        
+
         density = matches / total_words
         is_technical = density > 0.02 or matches >= 3
-        confidence = min(1.0, density * 20)  # Scale density to 0-1
-        
+        confidence = min(1.0, density * 20)
+        if is_technical:
+            confidence = max(confidence, 0.55)
+
+        return is_technical, confidence
         return is_technical, confidence
     
     def _is_literature_review_paragraph(self, text: str) -> Tuple[bool, float]:
         """Determine if text is part of a literature review."""
         text_lower = text.lower()
-        words = set(text_lower.split())
-        matches = len(words & LITERATURE_INDICATORS)
-        total_words = len(text.split())
-        
+        words = re.findall(r"\b[a-z][a-z'-]*\b", text_lower)
+        single_word_indicators = {
+            item for item in LITERATURE_INDICATORS if " " not in item
+        }
+        phrase_indicators = {
+            item for item in LITERATURE_INDICATORS if " " in item
+        }
+        matches = len(set(words) & single_word_indicators)
+        matches += sum(
+            1 for phrase in phrase_indicators
+            if re.search(r"\b" + re.escape(phrase) + r"\b", text_lower)
+        )
+        total_words = len(words)
+
         if total_words == 0:
             return False, 0.0
-        
+
         density = matches / total_words
         is_literature = density > 0.03 or matches >= 2
         confidence = min(1.0, density * 15)
-        
+        if is_literature:
+            confidence = max(confidence, 0.55)
+
         # If we're already in a literature review section, boost confidence
         if self.current_section == "literature_review":
             confidence = min(1.0, confidence + 0.4)
@@ -164,10 +182,18 @@ class ParagraphClassifier:
             return True, 0.9
         
         text_lower = text.lower()
-        methodology_markers = {"we used", "we conducted", "we implemented", 
-                             "we designed", "we collected", "procedure", "protocol"}
-        matches = sum(1 for marker in methodology_markers if marker in text_lower)
-        
+        methodology_markers = {
+            "we used", "we conducted", "we implemented", "we designed",
+            "we collected", "procedure", "protocol"
+        }
+        matches = sum(
+            1 for marker in methodology_markers
+            if re.search(
+                r"\b" + re.escape(marker).replace(r"\ ", r"\s+") + r"\b",
+                text_lower,
+            )
+        )
+
         is_methodology = matches >= 1
         confidence = min(1.0, 0.5 + matches * 0.15) if is_methodology else 0.0
         
@@ -179,11 +205,19 @@ class ParagraphClassifier:
             return True, 0.9
         
         text_lower = text.lower()
-        rd_markers = {"figure", "table", "shows", "demonstrates", "indicates",
-                     "our results", "we found", "the results", "this suggests",
-                     "consistent with", "in agreement with"}
-        matches = sum(1 for marker in rd_markers if marker in text_lower)
-        
+        rd_markers = {
+            "figure", "table", "shows", "demonstrates", "indicates",
+            "our results", "we found", "the results", "this suggests",
+            "consistent with", "in agreement with"
+        }
+        matches = sum(
+            1 for marker in rd_markers
+            if re.search(
+                r"\b" + re.escape(marker).replace(r"\ ", r"\s+") + r"\b",
+                text_lower,
+            )
+        )
+
         is_rd = matches >= 2
         confidence = min(1.0, 0.5 + matches * 0.1) if is_rd else 0.0
         
@@ -251,18 +285,22 @@ class ParagraphClassifier:
         is_ordinary, ord_conf = self._is_ordinary_prose(text, tech_conf, lit_conf, method_conf, rd_conf)
         
         # Determine primary category
-        classifications = [
-            ("technical_explanation", tech_conf),
-            ("literature_review", lit_conf),
-            ("methodology", method_conf),
-            ("results_discussion", rd_conf),
-            ("ordinary_prose", ord_conf)
-        ]
-        
-        # Sort by confidence
-        classifications.sort(key=lambda x: x[1], reverse=True)
+        # Only categories whose detector fired compete for the primary label.
+        classifications = []
+        if is_technical:
+            classifications.append(("technical_explanation", tech_conf))
+        if is_literature:
+            classifications.append(("literature_review", lit_conf))
+        if is_methodology:
+            classifications.append(("methodology", method_conf))
+        if is_results_discussion:
+            classifications.append(("results_discussion", rd_conf))
+        if not classifications:
+            classifications.append(("ordinary_prose", ord_conf))
+
+        classifications.sort(key=lambda item: item[1], reverse=True)
         primary_category, primary_confidence = classifications[0]
-        
+
         # If we have an active section context, weight that heavily
         if self.current_section:
             section_mapping = {
