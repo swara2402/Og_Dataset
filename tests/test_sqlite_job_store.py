@@ -84,7 +84,7 @@ def test_sqlite_job_store_recovers_interrupted_jobs_even_when_loaded_lazily(tmp_
         job = _job()
         job.job_id = f"job-recovery-{index}"
         job.created_at = f"2026-11-05T12:00:0{index}+00:00"
-        job.status = "processing" if index == 0 else "completed"
+        job.status = "processing"
         store.create(job)
 
     restarted = SQLiteJobStore(max_jobs=1, db_path=str(path))
