@@ -242,26 +242,6 @@ export interface AIReport {
   metrics: Record<string, number>;
 }
 
-export interface OriginalityReport {
-  provider: string;
-  scope: string;
-  disclosure: string;
-  summary: string;
-  searched_queries: { sentence_index: number; query: string; error?: string }[];
-  sentences_searched: number;
-  matches: OriginalityMatch[];
-  statistics: {
-    matched_sources: number;
-    potential_matches: number;
-    needs_manual_review: number;
-    uncited_quotations: number;
-    unique_content_percentage: number;
-    matched_text_percentage: number;
-    similarity_threshold: number;
-  };
-  limitations: string[];
-}
-
 export interface AnalysisReport {
   job_id: string;
   filename: string;
