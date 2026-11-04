@@ -10,6 +10,8 @@ from typing import Any, Dict, List
 
 from jsonschema import Draft202012Validator, SchemaError
 
+from backend.app.text.sentences import split_sentences
+
 
 _DATASET_ROOT = Path(
     os.environ.get(
@@ -17,7 +19,6 @@ _DATASET_ROOT = Path(
         str(Path(__file__).resolve().parents[3] / "knowledge_base"),
     )
 ).expanduser()
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 _REPEAT_WORD_RE = re.compile(r"\b([A-Za-z]{2,})[ \t]+\1\b", re.I)
 _SAFE_REPEAT_WORDS = {"a", "an", "and", "in", "of", "the", "to"}
 _COMMON_WORDS = {
@@ -203,7 +204,7 @@ def load_dataset() -> Dict[str, Any]:
 def assess_editing_needs(text: str) -> Dict[str, Any]:
     """Report observable issues without treating style preferences as errors."""
     value = text or ""
-    sentences = [part.strip() for part in _SENTENCE_RE.split(value.strip()) if part.strip()]
+    sentences = split_sentences(value)
     words = re.findall(r"\b[\w'-]+\b", value)
     issues: List[str] = []
     if _REPEAT_WORD_RE.search(value):

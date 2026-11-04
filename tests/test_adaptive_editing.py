@@ -234,3 +234,32 @@ def test_runtime_terminology_rejects_unapproved_licence(monkeypatch, tmp_path):
         stream.write(json.dumps(record) + "\n")
     with pytest.raises(RuntimeError, match="unapproved licence"):
         adaptive_editing.load_terminology()
+
+
+
+def test_sentence_segmentation_preserves_common_abbreviations_initialisms_and_decimals():
+    from backend.app.text.sentences import split_sentences
+
+    text = (
+        "Dr. Smith evaluated the U.S.A. sample at 3.14 units. "
+        "The result is shown in Fig. 2. It remained stable, e.g. across trials."
+    )
+    assert split_sentences(text) == [
+        "Dr. Smith evaluated the U.S.A. sample at 3.14 units.",
+        "The result is shown in Fig. 2.",
+        "It remained stable, e.g. across trials.",
+    ]
+
+
+def test_sentence_segmentation_handles_question_and_exclamation_boundaries():
+    from backend.app.text.sentences import split_sentences
+
+    assert split_sentences("Does it work? Yes! It does.") == [
+        "Does it work?", "Yes!", "It does."
+    ]
+
+
+def test_editing_profile_uses_abbreviation_aware_sentence_count():
+    text = "Dr. Lee used the U.S.A. dataset. The model was evaluated."
+    profile = assess_editing_needs(text)
+    assert profile["sentence_count"] == 2
