@@ -71,15 +71,42 @@ Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 
 ### Security and deployment
 
-The document API is currently designed for a trusted, local-only workflow and
-has no user authentication or per-user document isolation. Keep the backend
-bound to `127.0.0.1` as shown above; do not expose port `8000` directly to the
-internet or place it behind a public reverse proxy without adding application
-authentication, authorization, rate limits, and private job ownership. The
-separate `hosted_gateway.py` protects access to an Ollama model gateway only;
-it does **not** authenticate the document API. CORS is not an authentication
-mechanism. The example configuration disables public-web originality searches
-and debug mode by default; enable optional network features deliberately.
+The application supports request authentication and per-user job isolation when
+bearer tokens are configured. Configure `OG_API_TOKENS` as a JSON object
+mapping stable user IDs to unique, high-entropy secrets:
+
+```bash
+export OG_API_TOKENS='{"alice":"REPLACE_WITH_A_LONG_RANDOM_SECRET","bob":"REPLACE_WITH_ANOTHER_LONG_RANDOM_SECRET"}'
+export OG_API_AUTH_REQUIRED=true
+```
+
+Send the selected token on every API request:
+
+```http
+Authorization: Bearer REPLACE_WITH_A_LONG_RANDOM_SECRET
+```
+
+Each uploaded job is tagged with the authenticated user ID. Job listing is
+filtered by owner, and attempts to read, change, cancel, review, or export
+another user's job return `404`. Existing SQLite records without an owner
+are treated as belonging to the legacy `local` account and are not visible
+to configured token users. Use separate token secrets for each user; do not
+share a single token across people.
+
+For backward compatibility, when `OG_API_TOKENS` is empty and
+`OG_API_AUTH_REQUIRED` is false, the API runs in unauthenticated
+`local` mode. This mode is intended only for a trusted machine with the
+backend bound to `127.0.0.1` as shown above. Set
+`OG_API_AUTH_REQUIRED=true` in any deployment environment so startup
+requests fail closed if tokens are missing. Do not expose the API publicly
+without TLS termination, strong unique secrets, rate limiting, protected
+database and upload storage, and operational monitoring.
+
+The separate `hosted_gateway.py` protects access to an Ollama model gateway
+only; it does **not** authenticate the document API. CORS is not an
+authentication mechanism. The example configuration disables public-web
+originality searches and debug mode by default; enable optional network
+features deliberately.
 
 ## Tests
 
