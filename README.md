@@ -43,7 +43,7 @@ python3 -m pip install -r requirements.txt
 # python3 -m pip install -r requirements-nlp.txt
 # python3 -m spacy download en_core_web_sm
 cd frontend
-npm install
+npm ci
 npm run build
 cd ..
 ```
