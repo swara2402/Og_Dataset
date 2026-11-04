@@ -132,3 +132,12 @@ The follow-up code changes are in commits after the original audit snapshot. CI 
 - Added a restore action beside each version in the Document Workspace history panel.
 - Added API tests for restoring the original version, persistence after reload, and 404 for an unknown version.
 - Restore is an explicit user action. It does not delete version history or mutate the original uploaded bytes.
+
+
+## Context-qualified terminology proposals
+
+- Added `variants` and `context_terms` to the terminology schema. A reviewed entry must explicitly identify approved equivalent surface forms and context terms; it cannot rely on a free-form synonym list.
+- Runtime loads only entries whose `review_status` is `reviewed`; draft entries are excluded.
+- Added a deterministic proposal adapter that requires a matching discipline and all context terms before proposing a preferred form for a recorded variant.
+- The adapter protects citations and other masked spans, validates the candidate with the shared preservation checks, and returns a review-required proposal. It does not auto-apply terminology edits.
+- The canonical terminology inventory remains empty until real terms have appropriate provenance and expert review.
