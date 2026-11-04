@@ -26,14 +26,7 @@ import {
   WritingStyle,
 } from '../contexts/APIContext';
 
-const STYLES: { value: WritingStyle; label: string }[] = [
-  { value: 'academic', label: 'Academic' },
-  { value: 'professional', label: 'Professional' },
-  { value: 'natural', label: 'Natural' },
-  { value: 'concise', label: 'Concise' },
-  { value: 'executive', label: 'Executive' },
-  { value: 'preserve_voice', label: 'Preserve voice' },
-];
+const ACTIVE_EDITING_STYLE: WritingStyle = 'preserve_voice';
 
 type FileStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
@@ -60,7 +53,6 @@ export default function DocumentWorkspace() {
   const [file, setFile] = useState<WorkspaceFile | null>(null);
   const [progress, setProgress] = useState<ProcessingProgress | null>(null);
   const [results, setResults] = useState<ResultsResponse | null>(null);
-  const [style, setStyle] = useState<WritingStyle>('academic');
   const [activeTab, setActiveTab] = useState<'original' | 'revised' | 'compare' | 'versions'>('revised');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +145,7 @@ export default function DocumentWorkspace() {
       setResults(null);
       setProgress(null);
       setFile({ name: selected.name, status: 'uploading' });
-      const response = await uploadDocument(selected, { style, autoStart: true });
+      const response = await uploadDocument(selected, { style: ACTIVE_EDITING_STYLE, autoStart: true });
       if (!response) {
         setFile({ name: selected.name, status: 'failed', error: 'Upload failed. Check the backend and try again.' });
         return;
@@ -251,19 +243,12 @@ export default function DocumentWorkspace() {
 
   const renderDropzone = () => (
     <div className="space-y-6">
-      <div className="grid gap-4">
-        <div className="card">
-          <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Writing style</label>
-          <select
-            value={style}
-            onChange={(event) => setStyle(event.target.value as WritingStyle)}
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-900"
-          >
-            {STYLES.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </div>
+      <div className="card">
+        <p className="mb-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">Editing mode</p>
+        <p className="text-sm font-semibold">Conservative, voice-preserving corrections</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          The current rule engine fixes supported mechanical issues and flags uncertain wording for your review. Academic, concise and other style transformations are not implemented yet.
+        </p>
       </div>
       <p className="mt-3 text-xs text-green-700 dark:text-green-400">
         Exports include accepted edits only. Pending or rejected suggestions keep their original text.
