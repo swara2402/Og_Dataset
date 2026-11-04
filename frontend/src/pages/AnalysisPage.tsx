@@ -279,7 +279,6 @@ export default function AnalysisPage() {
                       </ul>
                     </div>
 
->
                   </section>
 
                   <section className="rounded-lg bg-neutral-50 p-4 text-sm dark:bg-neutral-900/40">
