@@ -93,3 +93,8 @@ This is a source-code and CI audit, not a claim of real-device or expert linguis
 - No expert linguist/editor review was performed.
 - No external paper collection was downloaded or licence-reviewed as part of this audit.
 - CI verifies the automated checks only; it does not certify academic quality or production readiness.
+
+
+## Follow-up implementation update
+
+Ollama was removed from the API request contract, runtime provider imports, settings model, workspace controls and settings display. The deterministic rule engine and optional local spaCy context provider remain. Provider-file and hosted-gateway artifact deletion is in progress; this follow-up does not change the earlier audit findings at its recorded commit.
