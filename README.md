@@ -130,6 +130,31 @@ authentication mechanism. The example configuration disables public-web
 originality searches and debug mode by default; enable optional network
 features deliberately.
 
+## Corpus-driven writing resources
+
+The project now includes a licence-aware corpus preparation workflow under
+`knowledge_base/corpus/`. It is deliberately offline: it does not crawl
+repositories or download papers. Add only sources whose individual licences
+permit the intended text mining, keep full-text extracts in an untracked local
+directory, and use `python scripts/prepare_corpus.py` to build aggregate
+section- and discipline-level observations. The output stores statistics,
+not source sentences, and never modifies editing rules automatically.
+
+Human-edited examples use the separate
+`knowledge_base/schemas/revision_pair.schema.json` contract. A pair is not
+eligible as a trusted example until a reviewer approves it and confirms
+meaning preservation. Draft and synthetic examples remain reference material;
+they are not silently promoted into rewrite instructions. See
+[`knowledge_base/corpus/README.md`](./knowledge_base/corpus/README.md) for
+the manifest format, supported licence identifiers, and workflow.
+
+The first implementation measures section coverage, sentence-length
+distributions, hedge markers, passive-auxiliary markers, and transition
+categories. These are descriptive observations—not targets to imitate or
+quality scores. The deterministic Python rules remain the only editing
+authority; optional offline NLP may later help classify context, but it is
+not required.
+ 
 ## Tests
 
 ```bash
