@@ -121,23 +121,29 @@ def validate_rewrite(
     original_numbers = extract_numbers(original_text)
     revised_numbers = extract_numbers(revised_text)
     missing_numbers, added_numbers = _counter_diff(original_numbers, revised_numbers)
-    numbers_ok = not missing_numbers
+    numbers_ok = original_numbers == revised_numbers
     if missing_numbers:
         issues.append(f"Numbers missing after rewrite: {', '.join(missing_numbers[:8])}")
         critical = True
     if added_numbers:
         issues.append(f"New numbers introduced: {', '.join(added_numbers[:8])}")
         critical = True
+    if not numbers_ok and not missing_numbers and not added_numbers:
+        issues.append("Numbers were reordered.")
+        critical = True
 
     original_citations = CITATION_RE.findall(original_text)
     revised_citations = CITATION_RE.findall(revised_text)
     missing_citations, added_citations = _counter_diff(original_citations, revised_citations)
-    citations_ok = not missing_citations
+    citations_ok = original_citations == revised_citations
     if missing_citations:
         issues.append(f"Citations/links missing after rewrite: {', '.join(missing_citations[:5])}")
         critical = True
     if added_citations:
         issues.append(f"New citations/links introduced: {', '.join(added_citations[:5])}")
+        critical = True
+    if not citations_ok and not missing_citations and not added_citations:
+        issues.append("Citations/links were reordered.")
         critical = True
 
     original_modality = Counter(match.group(0).casefold() for match in MODALITY_RE.finditer(original_text))
