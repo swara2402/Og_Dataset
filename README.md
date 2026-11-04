@@ -100,7 +100,7 @@ retains its single-user administrator behavior.
 
 Token configuration rejects duplicate user IDs, duplicate bearer secrets, and
 more than 500 configured users. User IDs are limited to 128 characters and
-tokens must be 32-512 characters. Analysis and originality request bodies
+tokens must be 32-512 characters. Analysis request bodies
 also enforce bounded text and selection sizes to avoid unbounded processing.
 
 The API also applies a sliding-window limit of 120 requests per minute per
@@ -121,7 +121,7 @@ fail closed with `503` if tokens are missing. Do not expose the API publicly
 without TLS termination, strong unique secrets, a shared rate limiter where
 needed, protected database and upload storage, and operational monitoring.
 
-The document editor does not call model APIs. Public-web originality search is a separate network feature and is not part of offline editing. CORS is not an authentication mechanism.
+The application has no public-web originality route, hosted model integration, or runtime model download. Document analysis, editing, history and exports are local. CORS is not an authentication mechanism.
 
 ## Corpus-driven writing resources
 
