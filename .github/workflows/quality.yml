@@ -22,6 +22,8 @@ jobs:
         run: python scripts/validate_revision_pairs.py
       - name: Validate academic terminology
         run: python scripts/validate_terminology.py
+      - name: Validate linguistic patterns
+        run: python scripts/validate_linguistic_patterns.py
       - name: Run preservation regression benchmark
         run: python scripts/evaluate_preservation.py
       - name: Run backend tests
