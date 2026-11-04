@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Synthetic preservation evaluation case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "case_type", "original_text", "candidate_text", "expected_valid"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "case_type": {"enum": ["positive_control", "negative_control"]},
+    "original_text": {"type": "string", "minLength": 1},
+    "candidate_text": {"type": "string", "minLength": 1},
+    "expected_valid": {"type": "boolean"}
+  }
+}
