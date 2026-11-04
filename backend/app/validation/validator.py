@@ -52,7 +52,7 @@ def content_tokens(text: str) -> List[str]:
 
 def _meaning_marker_signature(text: str) -> List[Tuple[str, Tuple[str, ...], Tuple[str, ...]]]:
     """Capture local lexical context around negation and uncertainty markers."""
-    words = list(re.finditer(r"\b[\w'-]+\b", text.casefold()))
+    words = list(re.finditer(r"\b[\w'-]+\b", text))
     signatures = []
     for marker in MEANING_MARKER_RE.finditer(text):
         index = next(
