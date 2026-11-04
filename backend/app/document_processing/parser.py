@@ -541,10 +541,10 @@ class LatexParser:
 
     @staticmethod
     def parse(file_path: Path, filename: str) -> ParsedDocument:
-        content = file_path.read_text(encoding="utf-8-sig")
+        content = file_path.read_text(encoding="utf-8")
         return LatexParser._parse_content(content, filename)
 
     @staticmethod
     def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
-        content = data.decode("utf-8-sig")
+        content = data.decode("utf-8")
         return LatexParser._parse_content(content, filename)
