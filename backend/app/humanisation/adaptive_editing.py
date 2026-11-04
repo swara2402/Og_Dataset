@@ -116,6 +116,38 @@ def load_examples() -> List[Dict[str, Any]]:
     return examples
 
 
+def load_terminology() -> List[Dict[str, Any]]:
+    """Load only explicitly reviewed terminology records for proposal use."""
+    path = _DATASET_ROOT / "datasets" / "terminology.jsonl"
+    schema = _read_json("schemas/terminology.schema.json")
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise RuntimeError("OG Dataset terminology schema is invalid.") from exc
+    validator = Draft202012Validator(schema)
+    entries: List[Dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    with path.open(encoding="utf-8") as stream:
+        for line_number, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"Invalid terminology JSONL at line {line_number}.") from exc
+            errors = sorted(validator.iter_errors(item), key=lambda error: list(error.absolute_path))
+            if errors:
+                raise RuntimeError(
+                    f"Terminology entry on line {line_number} does not match schema: {errors[0].message}"
+                )
+            if item["term_id"] in seen_ids:
+                raise RuntimeError(f"Duplicate terminology ID: {item['term_id']}")
+            seen_ids.add(item["term_id"])
+            if item["review_status"] == "reviewed":
+                entries.append(item)
+    return entries
+
+
 def load_dataset() -> Dict[str, Any]:
     """Read and validate the canonical knowledge base for each document job."""
     from backend.app.engine.dataset_validation import validate_dataset
@@ -129,6 +161,7 @@ def load_dataset() -> Dict[str, Any]:
     rules = load_quality_rules()
     policy = load_editing_policy()
     examples = load_examples()
+    terminology = load_terminology()
     rules_data = _read_json("rules/master_rules.json")
     schema = _read_json("schemas/example.schema.json")
     try:
@@ -148,6 +181,7 @@ def load_dataset() -> Dict[str, Any]:
         "rules": rules,
         "policy": policy,
         "examples": examples,
+        "terminology": terminology,
         "reference_profile": profile,
     }
 
