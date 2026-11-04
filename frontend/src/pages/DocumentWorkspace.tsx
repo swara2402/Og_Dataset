@@ -228,8 +228,14 @@ export default function DocumentWorkspace() {
 
   const percent = progress?.percent || 0;
   const selected = results?.results.find((item) => item.id === selectedId) || null;
-  const processedCount = results?.results.filter((item) => item.processed).length || 0;
+  const changedCount = results?.results.filter((item) => item.original !== item.revised).length || 0;
+  const eligibleCount = results?.results.filter((item) => item.eligible).length || 0;
+  const unchangedCount = results?.results.filter((item) => item.eligible && item.original === item.revised).length || 0;
+  const reviewItems = results?.results.filter((item) =>
+    item.warnings.length > 0 || item.requires_human_review || (item.validation.issues?.length || 0) > 0
+  ) || [];
   const warningCount = results?.results.reduce((total, item) => total + item.warnings.length, 0) || 0;
+  const protectedCount = results?.results.reduce((sum, item) => sum + item.protected_items.length, 0) || 0;
 
   const renderDropzone = () => (
     <div className="space-y-6">
@@ -313,9 +319,9 @@ export default function DocumentWorkspace() {
             <div className="flex items-center gap-3">
               <CheckCircle className="text-green-600 dark:text-green-400" size={24} />
               <div>
-                <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">Processing complete</h3>
+                <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">Document analysis complete</h3>
                 <p className="text-sm text-green-700 dark:text-green-400">
-                  {results.filename} · {results.style} style · {Math.round(results.processing_time)}s
+                  {results.filename} · {Math.round(results.processing_time)}s · {results.results.length} paragraphs inspected
                 </p>
               </div>
             </div>
@@ -342,11 +348,18 @@ export default function DocumentWorkspace() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <div className="card"><p className="text-sm text-neutral-500">Paragraphs</p><p className="text-2xl font-bold">{results.results.length}</p></div>
-          <div className="card"><p className="text-sm text-neutral-500">Paragraphs with edits</p><p className="text-2xl font-bold text-green-600 dark:text-green-400">{processedCount}</p></div>
-          <div className="card"><p className="text-sm text-neutral-500">Review flags</p><p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{warningCount}</p></div>
-          <div className="card"><p className="text-sm text-neutral-500">Protected items</p><p className="text-2xl font-bold">{results.results.reduce((sum, item) => sum + item.protected_items.length, 0)}</p></div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <div className="card"><p className="text-sm text-neutral-500">Analyzed</p><p className="text-2xl font-bold">{results.results.length}</p><p className="mt-1 text-xs text-neutral-500">{eligibleCount} eligible · {results.results.length - eligibleCount} preserved</p></div>
+          <div className="card"><p className="text-sm text-neutral-500">Suggested edits</p><p className="text-2xl font-bold text-green-600 dark:text-green-400">{changedCount}</p><p className="mt-1 text-xs text-neutral-500">Actual text changes</p></div>
+          <div className="card"><p className="text-sm text-neutral-500">Unchanged</p><p className="text-2xl font-bold">{unchangedCount}</p><p className="mt-1 text-xs text-neutral-500">Eligible, no edit applied</p></div>
+          <div className="card"><p className="text-sm text-neutral-500">Needs review</p><p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{reviewItems.length}</p><p className="mt-1 text-xs text-neutral-500">{warningCount} warning messages</p></div>
+          <div className="card"><p className="text-sm text-neutral-500">Protected items</p><p className="text-2xl font-bold">{protectedCount}</p><p className="mt-1 text-xs text-neutral-500">Citations, numbers, URLs, etc.</p></div>
+        </div>
+
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900/40">
+          <p className="font-semibold text-neutral-800 dark:text-neutral-100">How to read these results</p>
+          <p className="mt-1 text-neutral-600 dark:text-neutral-300">A paragraph counts as an edit only when its text actually changed. Unchanged paragraphs are not failures: the rules leave text alone when no safe, supported correction is available. Preserved headings, references, tables and other non-prose content are counted separately from eligible prose.</p>
+          {reviewItems.length > 0 && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{reviewItems.length} paragraph(s) need your attention. Open the Revised tab to see each warning and its paragraph number.</p>}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
@@ -383,6 +396,13 @@ export default function DocumentWorkspace() {
                   {item.version_count > 1 && <span>{item.version_count - 1} proposed change(s)</span>}
                 </div>
                 <p className="leading-relaxed text-neutral-800 dark:text-neutral-200">{item.revised}</p>
+                {item.proposal === null && (
+                  <div className="mt-3 rounded-lg bg-neutral-50 p-3 text-sm dark:bg-neutral-900/50">
+                    <p className="font-medium text-neutral-700 dark:text-neutral-200">No edit suggested</p>
+                    <p className="mt-1 text-neutral-600 dark:text-neutral-400">{item.edit_rationale || (item.eligible ? 'No supported rule-based correction was identified; the original wording was preserved.' : 'This content type is preserved and is not eligible for prose refinement.')}</p>
+                    {item.requires_human_review && <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">Author review is recommended; the system did not guess at a change.</p>}
+                  </div>
+                )}
                 {item.proposal !== null && (
                   <div className="mt-3 rounded-lg bg-neutral-50 p-3 text-sm dark:bg-neutral-900/50">
                     <p className="font-medium text-neutral-700 dark:text-neutral-200">
