@@ -1,8 +1,6 @@
 """Runtime configuration for Turnitout V2.
 
-All document processing is local by default. The only network feature is the
-explicitly opt-in originality search, which is disabled unless the user runs a
-search from the UI/API.
+All document processing is local. This application does not provide public-web search or hosted model features.
 """
 from __future__ import annotations
 
@@ -42,16 +40,6 @@ class Settings(BaseSettings):
     # Optional offline NLP; never downloads models or generates replacement text.
     spacy_enabled: bool = False
     spacy_model: str = "en_core_web_sm"
-
-    # Originality / source matching (explicit user action only)
-    enable_web_originality: bool = False
-    web_timeout: float = 12.0
-    web_max_queries: int = 6
-    web_pages_per_query: int = 2
-    web_user_agent: str = (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-    )
 
     # API authentication. Configure a JSON object mapping stable user IDs to
     # high-entropy bearer tokens before exposing the API beyond localhost.
