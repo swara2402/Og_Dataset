@@ -569,7 +569,7 @@ class LatexParser:
             "algorithmic", "picture", "minipage",
         }
         active_environments: list[str] = []
-        environment_pattern = re.compile(r"\\(begin|end)\\s*\\{([^}]+)\\}")
+        environment_pattern = re.compile(r"\\(begin|end)\s*\{([^}]+)\}")
         for index, match in enumerate(block_pattern.finditer(content), start=1):
             block = match.group(0)
             start, end = match.span()
