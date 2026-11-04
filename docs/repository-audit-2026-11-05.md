@@ -233,3 +233,17 @@ The audit follow-up was rechecked against the current repository head after the 
 - No open pull requests were returned by the repository PR listing at audit time.
 
 This CI result verifies the repository's automated checks on the current main commit. It does not close the documented product gaps: representative licensed corpus curation, expert-reviewed revision pairs and terminology, broader linguistic coverage, complex PDF/DOCX/LaTeX fidelity, packaging, and real-machine offline acceptance remain separate work. Empty curated datasets are intentional until valid sources and qualified human review exist; they must not be populated with fabricated examples merely to make the platform appear complete.
+
+
+## Frontend dependency security and punctuation regression follow-up
+
+- Resolved the previously reported frontend npm advisories: `npm audit --audit-level=moderate` now reports **0 vulnerabilities**.
+- Upgraded Vite to 8.3.5, `@vitejs/plugin-react` to 6.2.1, and TypeScript ESLint parser/plugin to 8.72.1.
+- Added a scoped TypeScript ESTree override to patched minimatch 11.0.4.
+- Verified frontend lint and production build under Vite 8.3.5.
+- Improved punctuation assessment so valid `e.g.`, `i.e.`, decimal values and capitalised initialisms such as `U.S.A.` are not incorrectly flagged.
+- Spacing repair now handles a missing space after common abbreviations while avoiding insertion inside capitalised initialisms.
+- Added regression tests for valid abbreviations, missing abbreviation spacing, decimal values and initialisms.
+
+Verified implementation snapshot: `042e31576e81c42e6c6fece96b18f79859a029df`.
+CI run `41913771723`: **130 passed, 1 skipped, 1 warning**; frontend audit, lint and production build passed.
