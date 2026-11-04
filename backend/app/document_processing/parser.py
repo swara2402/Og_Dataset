@@ -562,13 +562,34 @@ class LatexParser:
     def _parse_content(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
+        protected_environments = {
+            "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            "figure", "figure*", "table", "table*", "tabular", "tabular*",
+            "longtable", "tikzpicture", "algorithm", "algorithm*",
+            "algorithmic", "picture", "minipage",
+        }
+        active_environments: list[str] = []
+        environment_pattern = re.compile(r"\\\\(begin|end)\\s*\\{([^}]+)\\}")
         for index, match in enumerate(block_pattern.finditer(content), start=1):
             block = match.group(0)
             start, end = match.span()
+            starts_protected = False
+            for action, environment in environment_pattern.findall(block):
+                if action == "begin":
+                    if environment in protected_environments:
+                        starts_protected = True
+                    active_environments.append(environment)
+                else:
+                    if environment in active_environments:
+                        reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
+                        active_environments = active_environments[:reverse_index]
+            paragraph_type = LatexParser._classify(block)
+            if starts_protected or any(env in protected_environments for env in active_environments):
+                paragraph_type = "code"
             paragraphs.append(DocumentParagraph(
                 id=f"tex_block_{index}",
                 text=block,
-                paragraph_type=LatexParser._classify(block),
+                paragraph_type=paragraph_type,
                 location=f"tex.{start}:{end}",
                 metadata={"source_start": start, "source_end": end, "format": "latex"},
             ))
