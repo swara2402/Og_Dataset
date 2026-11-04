@@ -152,6 +152,7 @@ class RuleBasedEditingEngine:
         self.master_rules = dataset["rules"]
         self.editing_policy = dataset["policy"]
         self.examples = dataset["examples"]
+        self.terminology = dataset["terminology"]
         self.reference_profile = dataset["reference_profile"]
         self.dataset_version = dataset["version"]
         self.rule_by_id = {rule["id"]: rule for rule in self.master_rules}
