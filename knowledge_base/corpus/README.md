@@ -43,7 +43,7 @@ Human-edited pairs belong in a separate dataset and require documented source ri
 
 ## Manifest validation and local ingestion limits
 
-Each JSONL source record is checked against `knowledge_base/schemas/corpus_source.schema.json`. The manifest requires a unique source ID, title, URL field (which may be null for synthetic fixtures), licence, explicit `text_mining_permitted: true`, discipline, supported section labels and a plain `.txt` filename. Optional licence-evidence and attribution fields should be supplied for real sources. The script rejects unapproved licences, duplicate IDs, duplicate/unsupported sections, path traversal, symlinked source files and files larger than 50 MB by default.
+Each JSONL source record is checked against `knowledge_base/schemas/corpus_source.schema.json`. The manifest requires a unique source ID, title, URL field (which may be null for synthetic fixtures), licence, explicit `text_mining_permitted: true`, discipline, supported section labels and a plain `.txt` filename. Real sources must include a non-empty source URL, licence-evidence URL and attribution; synthetic fixtures may omit those fields. The script rejects unapproved licences, duplicate IDs, duplicate/unsupported sections, path traversal, symlinked source files and files larger than 50 MB by default.
 
 Validate the manifest without reading source files:
 
