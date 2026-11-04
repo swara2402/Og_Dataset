@@ -251,6 +251,10 @@ async def upload_document(
             status_code=400,
             detail=f"Unsupported file format '{suffix or 'unknown'}'. Allowed: DOCX, PDF, TXT, MD, TEX.",
         )
+    # Fail before parsing or persisting the upload. Otherwise a missing engine
+    # leaves an orphaned job containing the user's original document.
+    if auto_start and _engine is None:
+        raise HTTPException(status_code=503, detail="Humanisation engine is not initialized.")
     try:
         data = await file.read()
     except Exception as exc:
@@ -365,8 +369,7 @@ async def upload_document(
     job_store.create(job)
 
     if auto_start:
-        if _engine is None:
-            raise HTTPException(status_code=503, detail="Humanisation engine is not initialized.")
+        # The preflight above guarantees the engine exists before job creation.
         job.status = "queued"
         job.task = asyncio.create_task(_engine.process_job(job))
 
