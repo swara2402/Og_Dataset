@@ -146,9 +146,10 @@ file on every push. The terminology inventory lives in `knowledge_base/datasets/
 [`knowledge_base/corpus/README.md`](./knowledge_base/corpus/README.md) for
 the manifest format, supported licence identifiers, and workflow.
 
-The first implementation measures section coverage, sentence-length
+The corpus preparation workflow measures section coverage, sentence-length
 distributions, hedge markers, passive-auxiliary markers, and transition
-categories. These are descriptive observations—not targets to imitate or
+categories. Human-reviewed revision pairs and discipline-specific terminology
+have separate provenance-aware schemas and validators. These are descriptive observations—not targets to imitate or
 quality scores. The deterministic Python rules remain the only editing
 authority; optional offline NLP may later help classify context, but it is
 not required.
@@ -203,6 +204,6 @@ another rule set.
   can simplify complex inline formatting and floating objects.
 - Jobs and review decisions are persisted in a local SQLite database. API-level owner checks prevent one configured token user from accessing another user's job through the application, but all records still share the same database and host filesystem. This is not OS-level tenant isolation or per-user encryption. Protect database, upload and export directories with restrictive filesystem permissions, backups and host access controls before multi-user use.
 - Ollama, hosted model gateway code and the legacy LLM-based humanizer have been removed. Optional spaCy analysis is local and never generates replacement text.
-- The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
+- The spaCy provider is opt-in, does not download language models, and can produce conservative morphology-guided subject/finite-verb agreement proposals. These remain proposals requiring user review; spaCy does not generate paragraphs or apply edits automatically.
 - Only five synthetic, draft examples are currently provided; there are no
   verified human revision pairs to support broad automatic rewriting.
