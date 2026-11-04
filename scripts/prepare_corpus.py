@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
 SECTIONS = {"abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion"}
 HEDGES = {"may", "might", "could", "possibly", "potentially", "suggest", "suggests", "suggested", "appears", "indicates"}
-PASSIVE_MARKERS = {"was", "were", "been", "being", "is", "are"}
+BE_AUXILIARY_MARKERS = {"was", "were", "been", "being", "is", "are"}
 TRANSITIONS = {
     "contrast": {"however", "although", "whereas", "nevertheless"},
     "addition": {"additionally", "furthermore", "moreover", "also"},
