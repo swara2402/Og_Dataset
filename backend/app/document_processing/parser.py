@@ -514,7 +514,11 @@ class LatexParser:
             return "front_matter"
         if re.search(r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|title)\*?\s*\{", value):
             return "heading"
-        if value.startswith("%"):
+        if value.startswith("%") or re.search(r"(?m)^\\s*%", value):
+            return "code"
+        # Inline links and file inclusions can carry targets or assets that
+        # must not be rewritten as ordinary prose.
+        if re.search(r"\\\\(?:href|url|includegraphics|input|include|lstinputlisting)\\b", value):
             return "code"
         return "body"
 
