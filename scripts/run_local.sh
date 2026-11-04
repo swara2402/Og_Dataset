@@ -34,7 +34,8 @@ cleanup() {
   [[ -z "$FRONTEND_PID" ]] || wait "$FRONTEND_PID" 2>/dev/null || true
   [[ -z "$BACKEND_PID" ]] || wait "$BACKEND_PID" 2>/dev/null || true
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT TERM
 
 "$PYTHON_BIN" -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 &
 BACKEND_PID=$!
