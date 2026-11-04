@@ -20,8 +20,8 @@ def _parse_tokens(raw_tokens: str) -> Dict[str, str]:
         raise ValueError("OG_API_TOKENS must contain a valid JSON object.") from exc
     if not isinstance(value, dict) or not value:
         raise ValueError("OG_API_TOKENS must be a non-empty JSON object.")
-    if any(not isinstance(user, str) or not user.strip() or not isinstance(token, str) or not token for user, token in value.items()):
-        raise ValueError("OG_API_TOKENS must map non-empty user IDs to non-empty token strings.")
+    if any(not isinstance(user, str) or not user.strip() or user == "local" or not isinstance(token, str) or len(token) < 32 for user, token in value.items()):
+        raise ValueError("OG_API_TOKENS must map non-local user IDs to tokens of at least 32 characters.")
     return value
 
 
