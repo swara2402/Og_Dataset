@@ -574,6 +574,9 @@ class LatexParser:
             block = match.group(0)
             start, end = match.span()
             starts_protected = False
+            was_inside_protected = any(
+                env in protected_environments for env in active_environments
+            )
             for action, environment in environment_pattern.findall(block):
                 if action == "begin":
                     if environment in protected_environments:
@@ -584,7 +587,9 @@ class LatexParser:
                         reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
                         active_environments = active_environments[:reverse_index]
             paragraph_type = LatexParser._classify(block)
-            if starts_protected or any(env in protected_environments for env in active_environments):
+            if was_inside_protected or starts_protected or any(
+                env in protected_environments for env in active_environments
+            ):
                 paragraph_type = "code"
             paragraphs.append(DocumentParagraph(
                 id=f"tex_block_{index}",
