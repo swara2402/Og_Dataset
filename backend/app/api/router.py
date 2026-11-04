@@ -538,7 +538,11 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
     if request.action == "accept":
         if state.review_status == "rejected":
             proposal = next(
-                (version for version in reversed(state.versions) if version.source != "original"),
+                (
+                    version for version in reversed(state.versions)
+                    if version.source != "original"
+                    and not version.source.startswith("hybrid-rejected:")
+                ),
                 None,
             )
             if proposal is None:
