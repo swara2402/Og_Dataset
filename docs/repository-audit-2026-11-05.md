@@ -247,3 +247,35 @@ This CI result verifies the repository's automated checks on the current main co
 
 Verified implementation snapshot: `042e31576e81c42e6c6fece96b18f79859a029df`.
 CI run `41913771723`: **130 passed, 1 skipped, 1 warning**; frontend audit, lint and production build passed.
+
+
+## Latest offline product-boundary and startup verification — 2026-11-05
+
+The following implementation batches were merged after the earlier audit snapshot:
+
+- PR #44 removed the authorship-style heuristic module, API route, report field, frontend panels and TypeScript types. The analysis report now contains descriptive writing-quality metrics and protected-content validation only.
+- PR #45 added a one-command local launcher and a loopback-only acceptance smoke check, aligned the Vite proxy with the backend's `127.0.0.1` bind, and removed the remote Google Fonts dependency.
+- PR #46 removed the unused root-level legacy similarity detector, added a regression assertion that it stays absent, corrected stale API/README descriptions, and added a one-time dependency installer that creates a project-local `.venv`.
+
+Current main commit: `2e1b4a2894bf6e62f2d96010d169a9312e439191`.
+
+GitHub Actions run [41915309824](https://github.com/swara2402/Og_Dataset/actions/runs/41915309824) completed successfully on that exact commit:
+- Backend validators, preservation benchmark, launcher syntax and architecture checks passed.
+- Backend tests: **131 passed, 1 skipped, 1 warning**.
+- Frontend lint and production build passed.
+
+Local workflow:
+- One-time setup (requires package-registry access): `bash scripts/install_local.sh`.
+- Start both services: `bash scripts/run_local.sh`.
+- Loopback-only smoke acceptance: `python3 scripts/check_local.py`.
+- Real-machine document and disconnected-network acceptance procedure: [docs/local-offline-acceptance.md](./local-offline-acceptance.md).
+
+Remaining work is not safely automatable by fabricating data or claiming unperformed acceptance:
+- Real licensed academic corpus sources and expert-reviewed revision pairs, terminology and rhetorical patterns are still needed; curated datasets intentionally remain empty until provenance and reviewer decisions exist.
+- Broad grammar, syntax, clause, voice and paragraph-level editing remains partial. Current deterministic rules are intentionally conservative.
+- DOCX complex-XML edits can be skipped to preserve the source; PDF export is regenerated from extracted text and does not guarantee original layout fidelity; LaTeX edits are limited to mapped prose blocks.
+- Optional spaCy support remains narrow and does not provide semantic embeddings.
+- A real disconnected-network run and round-trip inspection in Word/PDF readers/local TeX are still required on the user's machine. CI cannot perform those checks on the user's actual documents or hardware.
+- The installer installs dependencies; it is not a signed desktop installer or a packaged native application.
+
+This is a stronger local-development and offline-use baseline, not a claim that every planned academic-writing transformation or every document format has production-grade fidelity.
