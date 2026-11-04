@@ -11,6 +11,8 @@ from collections import Counter
 from difflib import SequenceMatcher
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from backend.app.text.sentences import split_sentences as _split_sentences
+
 PLACEHOLDER_RE = re.compile(r"__TURNITOUT_PROTECTED_\d{4}__")
 NUMBER_RE = re.compile(r"(?<![A-Za-z_])[-+]?\d+(?:[.,]\d+)*(?:\s?%)?")
 CITATION_RE = re.compile(
@@ -39,7 +41,7 @@ STOPWORDS = {
 
 
 def split_sentences(text: str) -> List[str]:
-    return [part.strip() for part in SENTENCE_SPLIT_RE.split(text.strip()) if part.strip()]
+    return _split_sentences(text)
 
 
 def content_tokens(text: str) -> List[str]:
