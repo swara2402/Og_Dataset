@@ -283,6 +283,7 @@ async def upload_document(
             "PDF extraction recovers text and paragraph order but may lose complex layout, "
             "columns and embedded tables."
         )
+        warnings.extend(document.metadata.get("extraction_warnings", []))
 
     for index, (paragraph, classification) in enumerate(zip(document.paragraphs, classifications)):
         eligible = classification.eligible_for_refinement
