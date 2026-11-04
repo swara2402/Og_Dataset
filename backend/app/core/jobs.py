@@ -220,7 +220,6 @@ class Job:
     statistics: Dict[str, Any] = field(default_factory=dict)
     writing_quality: Optional[Dict[str, Any]] = None
     ai_indicators: Optional[Dict[str, Any]] = None
-    originality: Optional[Dict[str, Any]] = None
     owner_id: str = "local"
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
     task: Optional[asyncio.Task] = None
@@ -402,7 +401,7 @@ class SQLiteJobStore(JobStore):
             "status": job.status, "progress": job.progress, "error": job.error,
             "started_at": job.started_at, "finished_at": job.finished_at,
             "statistics": job.statistics, "writing_quality": job.writing_quality,
-            "ai_indicators": job.ai_indicators, "originality": job.originality,
+            "ai_indicators": job.ai_indicators,
             "owner_id": job.owner_id,
         }
         return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
@@ -433,7 +432,7 @@ class SQLiteJobStore(JobStore):
             error=data.get("error"), started_at=data.get("started_at"),
             finished_at=data.get("finished_at"), statistics=data.get("statistics", {}),
             writing_quality=data.get("writing_quality"), ai_indicators=data.get("ai_indicators"),
-            originality=data.get("originality"), owner_id=data.get("owner_id", "local"),
+            owner_id=data.get("owner_id", "local"),
         )
         # Rehydrate format-specific source elements from the original upload where possible.
         if job.original_bytes:
