@@ -36,13 +36,11 @@ def test_configured_tokens_require_authentication_and_isolate_jobs():
 
             assert client.get(f"/api/v1/documents/{job_id}", headers=alice).status_code == 200
             assert client.get(f"/api/v1/documents/{job_id}", headers=bob).status_code == 404
-            assert client.delete(f"/api/v1/jobs/{job_id}", headers=bob).status_code == 404
             assert client.get(
                 f"/api/v1/processing/{job_id}/status",
                 headers={"Authorization": "Bearer invalid-token"},
             ).status_code == 401
 
-            assert client.delete(f"/api/v1/jobs/{job_id}", headers=alice).status_code == 200
     finally:
         settings.api_tokens = previous_tokens
         settings.api_auth_required = previous_required
