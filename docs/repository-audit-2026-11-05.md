@@ -123,3 +123,12 @@ The follow-up code changes are in commits after the original audit snapshot. CI 
 - Added both validators to CI.
 - Extended optional spaCy use beyond passive observation: when explicitly enabled for paragraph analysis, it can identify narrowly defined subject/finite-verb agreement candidates using POS, dependency and morphological number features. The adapter creates deterministic, review-required proposals and validates protected content, citations, numbers and modality before returning them. It does not generate text or auto-apply corrections.
 - The agreement adapter is intentionally conservative: it skips ambiguous/coordinated/pronominal subjects and unsupported verb forms. Broader grammar, clause restructuring, voice conversion and paragraph coherence remain incomplete and need their own testable rule families.
+
+
+## Document history update
+
+- Added `POST /api/v1/processing/{job_id}/restore-version` to restore a previously persisted paragraph version after processing has completed.
+- Restore copies the stored text, masked text, validation and rule metadata back into the active paragraph state, recalculates document statistics, and persists the job.
+- Added a restore action beside each version in the Document Workspace history panel.
+- Added API tests for restoring the original version, persistence after reload, and 404 for an unknown version.
+- Restore is an explicit user action. It does not delete version history or mutate the original uploaded bytes.
