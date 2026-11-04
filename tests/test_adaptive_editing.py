@@ -101,6 +101,7 @@ def test_latest_og_dataset_rules_policy_examples_and_profile_load():
     assert any(example["edit_scope"] == "none" for example in dataset["examples"])
     assert "AgriSense" in dataset["reference_profile"]
     assert dataset["policy"]["default_strategy"] == "minimal_edit"
+    assert dataset["terminology"] == []
 
 
 def test_dataset_updates_are_reloaded_for_each_job(monkeypatch, tmp_path):
