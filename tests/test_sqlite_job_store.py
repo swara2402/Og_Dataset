@@ -93,3 +93,58 @@ def test_sqlite_job_store_recovers_interrupted_jobs_even_when_loaded_lazily(tmp_
     assert restored is not None
     assert restored.status == "failed"
     assert "interrupted" in (restored.error or "").lower()
+
+
+def test_accepted_review_survives_restart_and_exports_only_accepted_text(tmp_path):
+    from backend.app.export.exporter import _plain_text
+
+    path = tmp_path / "review.sqlite3"
+    first = SQLiteJobStore(db_path=str(path))
+    job = _job()
+    state = job.paragraphs[0]
+    state.add_version(
+        text="A clearer paragraph for persistence.",
+        masked_text="A clearer paragraph for persistence.",
+        pass_number=1,
+        source="rule-based",
+    )
+    state.review_status = "accepted"
+    first.create(job)
+    first.save(job)
+
+    restarted = SQLiteJobStore(db_path=str(path))
+    restored = restarted.get(job.job_id)
+
+    assert restored is not None
+    assert restored.paragraphs[0].review_status == "accepted"
+    assert restored.paragraphs[0].current_text == "A clearer paragraph for persistence."
+    exported = _plain_text(restored)
+    assert "A clearer paragraph for persistence." in exported
+    assert "A short paragraph for persistence." not in exported
+
+
+def test_rejected_review_survives_restart_and_keeps_original_in_export(tmp_path):
+    from backend.app.export.exporter import _plain_text
+
+    path = tmp_path / "rejected.sqlite3"
+    first = SQLiteJobStore(db_path=str(path))
+    job = _job()
+    state = job.paragraphs[0]
+    state.add_version(
+        text="A proposed replacement.",
+        masked_text="A proposed replacement.",
+        pass_number=1,
+        source="rule-based",
+    )
+    state.review_status = "rejected"
+    first.create(job)
+    first.save(job)
+
+    restarted = SQLiteJobStore(db_path=str(path))
+    restored = restarted.get(job.job_id)
+
+    assert restored is not None
+    assert restored.paragraphs[0].review_status == "rejected"
+    exported = _plain_text(restored)
+    assert "A short paragraph for persistence." in exported
+    assert "A proposed replacement." not in exported
