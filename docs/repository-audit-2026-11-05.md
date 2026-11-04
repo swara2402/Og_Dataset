@@ -44,7 +44,7 @@ This is a source-code and CI audit, not a claim of real-device or expert linguis
   - Legacy files include `backend/app/providers/ollama_adapter.py`, `backend/app/providers/ollama_suggestion_engine.py`, root `ollama_provider.py`, `ollama_provider.py`-related compatibility modules, `hosted_gateway.py`, `Dockerfile.gateway` and `docker-compose.hosted.yml`.
 - Core `requirements.txt` does not declare a hosted generative-AI SDK. The explicit Ollama implementation uses the repository's own HTTP client wrapper. The hosted gateway is an Ollama gateway, not a required core editing service.
 - Optional spaCy is isolated in `requirements-nlp.txt`; core requirements do not install spaCy.
-- Public-web originality search is a separate optional network feature, disabled by default. It conflicts with a strict interpretation of fully offline operation if enabled; it should be removed or isolated behind an explicit optional extra/profile if the product is to guarantee offline-only behavior.
+- Public-web originality search was present as an opt-in network feature in the audited snapshot; it has since been removed from the offline core.
 - `quality_analysis/ai_indicators.py` computes stylistic heuristics, not an AI detector or AI percentage. It should be described as optional writing-style diagnostics, not a writing-quality objective or editing target.
 
 ### Linguistic engine
@@ -77,7 +77,7 @@ This is a source-code and CI audit, not a claim of real-device or expert linguis
 ## Priority remediation order
 
 1. Remove Ollama from API, settings, UI, tests, root compatibility files and hosted-gateway deployment artifacts. Keep the deterministic engine and optional spaCy only.
-2. Remove the public-web originality feature from the offline product path, or make it a clearly separate optional network add-on that is absent from the offline build.
+2. Keep public-web originality search excluded from the offline product path; verify no external network clients remain in the core.
 3. Make `knowledge_base/` the only tracked runtime dataset source; remove duplicate rule/example copies or generate compatibility copies mechanically with drift checks.
 4. Expand canonical schemas and validation to cover terminology, discipline/section tags, linguistic patterns, source provenance, revision-pair eligibility and licence metadata.
 5. Implement deterministic grammar/punctuation, morphology-aware and context-aware rules incrementally with minimal-change defaults and abstention when ambiguous.
@@ -111,7 +111,7 @@ Changes landed on `main` after the audit snapshot:
 - Deleted duplicate rule/example directories at `backend/app/rules/`, `backend/app/datasets/`, and root `rules/`. The runtime canonical dataset is now `knowledge_base/`.
 - Added architecture regression tests for the single canonical dataset location, absence of Ollama configuration/provider files, and the paragraph-analysis request contract.
 - Retained optional spaCy context analysis. It is local, does not generate text, and is not required for core deterministic processing.
-- Retained optional public-web originality lookup as a separate network-only feature. It is not called by document editing; use the core workflow offline by leaving that feature unused/disabled.
+- Removed the public-web originality API route, provider imports and provider modules, runtime settings, frontend client method, and related configuration tests. The core no longer exposes a public search operation.
 
 The follow-up code changes are in commits after the original audit snapshot. CI must pass on the final current `main` SHA before this follow-up is considered verified.
 
@@ -176,3 +176,8 @@ Repository main at the time of this update: `b40741db6bca74782efe53f984c10cb508a
 Final CI for the snapshot above: run `41908148484` completed successfully. Backend: **117 passed, 1 skipped, 1 warning**. Frontend lint and production build passed. The remaining warning is the existing Starlette TestClient/httpx deprecation notice.
 
 This is not a claim of complete platform readiness. Real corpus curation, expert-reviewed data, broader deterministic linguistic rules and human evaluation are still required.
+
+
+## Offline boundary follow-up
+
+The optional public-web originality feature has now been removed from the core application rather than merely disabled by default. The API route and DuckDuckGo provider modules are deleted, its settings are removed, the frontend API client no longer exposes a search action, and the privacy copy now describes local-only processing. A configuration regression test asserts that the web-search setting is absent. The offline guarantee still needs a broader static scan and test coverage for all outbound network-capable code paths before it can be treated as formally verified.
