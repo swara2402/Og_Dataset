@@ -232,9 +232,11 @@ def export_notes(job: Job, fmt: str) -> List[str]:
     ]
     if fmt.lstrip(".").lower() == "docx":
         notes.append(
-            "DOCX export preserves paragraphs, headings, tables and paragraph styles. "
-            "Inline character formatting beyond the first run, complex hyperlinks and "
-            "floating objects may be simplified."
+            "DOCX export preserves paragraphs, headings, tables, paragraph styles, and "
+            "existing inline run formatting where text remains in order. Inserted or "
+            "replaced text inherits the nearest preceding run's formatting. Complex "
+            "run reordering, tabs or line breaks inside runs, hyperlinks, and floating "
+            "objects may still be simplified."
         )
         if not job.original_bytes:
             notes.append("Original DOCX is unavailable; a plain DOCX was generated instead.")
