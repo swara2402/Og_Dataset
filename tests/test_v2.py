@@ -82,13 +82,23 @@ def test_rejected_hybrid_suggestion_stays_in_history_but_is_not_active_proposal(
         section=None,
         eligible=True,
     )
-    rejected_text = "The rejected alternative wording."
+    earlier_text = "An earlier suggestion that is now superseded."
     state.versions.append(
         VersionEntry(
             version=1,
+            text=earlier_text,
+            masked_text=earlier_text,
+            pass_number=1,
+            source="rule-based",
+        )
+    )
+    rejected_text = "The rejected alternative wording."
+    state.versions.append(
+        VersionEntry(
+            version=2,
             text=rejected_text,
             masked_text=rejected_text,
-            pass_number=1,
+            pass_number=2,
             source="hybrid-rejected:local_llm",
         )
     )
@@ -101,6 +111,7 @@ def test_rejected_hybrid_suggestion_stays_in_history_but_is_not_active_proposal(
     assert serialized["review_status"] == "rejected"
     assert serialized["versions"][-1]["text"] == rejected_text
     assert serialized["versions"][-1]["source"] == "hybrid-rejected:local_llm"
+    assert serialized["versions"][-2]["text"] == earlier_text
 
 
 def test_classifier_does_not_treat_prose_mention_as_heading():
@@ -502,6 +513,16 @@ def test_hybrid_proposal_review_persists_acceptance_and_rejects_protected_change
     assert rejected["paragraph"]["review_status"] == "rejected"
     assert rejected["paragraph"]["revised"] == rejected_original
     assert rejected["paragraph"]["versions"][-1]["source"] == "hybrid-rejected:local_llm"
+    assert rejected["paragraph"]["proposal"] is None
+
+    with pytest.raises(HTTPException) as reaccept_exc:
+        asyncio.run(
+            router.review_paragraph(
+                rejected_job.job_id,
+                router.ReviewRequest(paragraph_id="hybrid-p2", action="accept"),
+            )
+        )
+    assert reaccept_exc.value.status_code == 409
 
     with pytest.raises(HTTPException) as exc:
         asyncio.run(
