@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.core.config import Settings, settings
 from backend.app.core.jobs import Job, ParagraphState, VersionEntry, job_store, now_iso
+from backend.app.api.auth import current_owner_id
 from backend.app.document_processing.parser import DocumentParser
 from backend.app.engine.pipeline import HybridAnalysisPipeline
 from backend.app.providers.spacy_provider import SpacyContextProvider
@@ -61,7 +62,8 @@ def _require_engine() -> HumanisationEngine:
 
 def _get_job(job_id: str) -> Job:
     job = job_store.get(job_id)
-    if job is None:
+    # Use the same 404 for missing and foreign jobs to avoid leaking job IDs.
+    if job is None or job.owner_id != current_owner_id.get():
         raise HTTPException(status_code=404, detail="Job not found.")
     return job
 
@@ -222,7 +224,7 @@ async def clear_cache() -> Dict[str, Any]:
 # ---------------------------------------------------------------------- jobs
 @api_router.get("/jobs")
 async def list_jobs() -> Dict[str, Any]:
-    return {"jobs": [job.summary() for job in job_store.list()]}
+    return {"jobs": [job.summary() for job in job_store.list() if job.owner_id == current_owner_id.get()]}
 
 
 @api_router.delete("/jobs/{job_id}")
@@ -346,6 +348,7 @@ async def upload_document(
         document=document,
         paragraphs=states,
         original_bytes=data,
+        owner_id=current_owner_id.get(),
         statistics={
             "total_paragraphs": len(states),
             "eligible_paragraphs": eligible_count,
