@@ -25,13 +25,14 @@ def test_hybrid_analysis_api_returns_proposals_without_applying_edits():
         assert result["proposals"][0]["status"] == "pending"
 
 
-def test_hybrid_analysis_api_rejects_disabled_optional_providers():
+def test_hybrid_analysis_api_rejects_disabled_spacy_context():
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/analysis/paragraph",
             json={
                 "paragraph_id": "p1",
                 "text": "The model was evaluated.",
+                "include_nlp": True,
             },
         )
         assert response.status_code == 409
