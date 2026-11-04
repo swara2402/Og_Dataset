@@ -184,6 +184,18 @@ def test_validator_rejects_changes_to_negation_or_uncertainty():
     assert result["checks"]["modality"] is False
 
 
+def test_validator_rejects_changed_scope_with_same_uncertainty_marker():
+    original = "The model may improve accuracy in the trial."
+    revised = "The model may reduce accuracy in the trial."
+    result = validate_rewrite(
+        original, revised, original, revised, [],
+        semantic_similarity_override=0.95,
+    )
+    assert result["valid"] is False
+    assert result["checks"]["modality"] is False
+    assert any("local scope" in issue for issue in result["issues"])
+
+
 def test_validator_accepts_faithful_rewrite_with_semantic_override():
     original = "Adoption reached 67% in 2023 (Smith, 2023)."
     revised = "In 2023, 67% of firms had adopted the technology (Smith, 2023)."
