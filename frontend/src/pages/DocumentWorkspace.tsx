@@ -24,16 +24,10 @@ import {
   ProcessingProgress,
   ResultsResponse,
   WritingStyle,
+  HybridAnalysisResponse,
 } from '../contexts/APIContext';
 
-const STYLES: { value: WritingStyle; label: string }[] = [
-  { value: 'academic', label: 'Academic' },
-  { value: 'professional', label: 'Professional' },
-  { value: 'natural', label: 'Natural' },
-  { value: 'concise', label: 'Concise' },
-  { value: 'executive', label: 'Executive' },
-  { value: 'preserve_voice', label: 'Preserve voice' },
-];
+const ACTIVE_EDITING_STYLE: WritingStyle = 'preserve_voice';
 
 type FileStatus = 'uploading' | 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
@@ -53,6 +47,8 @@ export default function DocumentWorkspace() {
     getProcessingStatus,
     getProcessingResults,
     reviewParagraph,
+    reviewHybridProposal,
+    analyzeParagraph,
     exportDocument,
     isConnected,
   } = useAPI();
@@ -60,11 +56,16 @@ export default function DocumentWorkspace() {
   const [file, setFile] = useState<WorkspaceFile | null>(null);
   const [progress, setProgress] = useState<ProcessingProgress | null>(null);
   const [results, setResults] = useState<ResultsResponse | null>(null);
-  const [style, setStyle] = useState<WritingStyle>('academic');
   const [activeTab, setActiveTab] = useState<'original' | 'revised' | 'compare' | 'versions'>('revised');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [hybridResult, setHybridResult] = useState<HybridAnalysisResponse | null>(null);
+  const [hybridLoading, setHybridLoading] = useState(false);
+  const [useLocalOllama, setUseLocalOllama] = useState(false);
+  const [useSpacyContext, setUseSpacyContext] = useState(false);
+  const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
+  const [hybridDecisions, setHybridDecisions] = useState<Record<string, 'accepted' | 'rejected'>>({});
 
   const loadJob = useCallback(
     async (id: string) => {
@@ -144,6 +145,7 @@ export default function DocumentWorkspace() {
       'application/pdf': ['.pdf'],
       'text/plain': ['.txt'],
       'text/markdown': ['.md'],
+      'text/x-tex': ['.tex'],
     },
     maxFiles: 1,
     onDrop: async (acceptedFiles) => {
@@ -153,7 +155,7 @@ export default function DocumentWorkspace() {
       setResults(null);
       setProgress(null);
       setFile({ name: selected.name, status: 'uploading' });
-      const response = await uploadDocument(selected, { style, autoStart: true });
+      const response = await uploadDocument(selected, { style: ACTIVE_EDITING_STYLE, autoStart: true });
       if (!response) {
         setFile({ name: selected.name, status: 'failed', error: 'Upload failed. Check the backend and try again.' });
         return;
@@ -193,7 +195,7 @@ export default function DocumentWorkspace() {
     navigate('/document', { replace: true });
   };
 
-  const handleExport = async (format: 'docx' | 'txt' | 'md' | 'pdf') => {
+  const handleExport = async (format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => {
     if (!file?.jobId) return;
     setExportOpen(false);
     const blob = await exportDocument(file.jobId, format);
@@ -210,6 +212,54 @@ export default function DocumentWorkspace() {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
+  };
+
+  const handleHybridAnalysis = async (paragraph: ParagraphResult) => {
+    setHybridLoading(true);
+    setHybridResult(null);
+    setError(null);
+    const response = await analyzeParagraph({
+      paragraph_id: paragraph.id,
+      text: paragraph.revised,
+      paragraph_type: paragraph.type,
+      category: paragraph.category,
+      document_context: results?.results.map((item) => item.revised).join("\\n\\n").slice(0, 100000) || paragraph.original,
+      include_nlp: useSpacyContext,
+      include_local_llm: useLocalOllama,
+    });
+    if (!response) {
+      setError('Hybrid analysis failed. Check whether the selected local providers are enabled in backend settings.');
+    } else {
+      setHybridResult(response);
+    }
+    setHybridLoading(false);
+  };
+
+  const handleHybridReview = async (
+    proposal: HybridAnalysisResponse['proposals'][number],
+    action: 'accept' | 'reject'
+  ) => {
+    if (!file?.jobId) return;
+    const response = await reviewHybridProposal(file.jobId, proposal, action);
+    if (!response) {
+      setError(`Could not ${action} this hybrid suggestion. It may be stale or have failed protected-content validation.`);
+      return;
+    }
+    setHybridDecisions((current) => ({
+      ...current,
+      [proposal.proposal_id]: action === 'accept' ? 'accepted' : 'rejected',
+    }));
+    const refreshed = await getProcessingResults(file.jobId);
+    if (refreshed) setResults(refreshed);
+  };
+
+  const handleCopyProposal = async (proposal: HybridAnalysisResponse['proposals'][number]) => {
+    try {
+      await navigator.clipboard.writeText(proposal.suggested_text);
+      setCopiedProposalId(proposal.proposal_id);
+    } catch {
+      setError('Clipboard access was blocked by the browser. Select and copy the suggestion manually.');
+    }
   };
 
   const handleReview = async (
@@ -251,19 +301,12 @@ export default function DocumentWorkspace() {
 
   const renderDropzone = () => (
     <div className="space-y-6">
-      <div className="grid gap-4">
-        <div className="card">
-          <label className="mb-2 block text-sm font-medium text-neutral-700 dark:text-neutral-300">Writing style</label>
-          <select
-            value={style}
-            onChange={(event) => setStyle(event.target.value as WritingStyle)}
-            className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-900"
-          >
-            {STYLES.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </div>
+      <div className="card">
+        <p className="mb-1 text-sm font-medium text-neutral-700 dark:text-neutral-300">Editing mode</p>
+        <p className="text-sm font-semibold">Conservative, voice-preserving corrections</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          The current rule engine fixes supported mechanical issues and flags uncertain wording for your review. Academic, concise and other style transformations are not implemented yet.
+        </p>
       </div>
       <p className="mt-3 text-xs text-green-700 dark:text-green-400">
         Exports include accepted edits only. Pending or rejected suggestions keep their original text.
@@ -280,7 +323,7 @@ export default function DocumentWorkspace() {
         <Upload className="mx-auto mb-4 h-12 w-12 text-neutral-400" />
         <h3 className="mb-2 text-lg font-medium">{isDragActive ? 'Drop your document' : 'Upload a document'}</h3>
         <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
-          DOCX, PDF, TXT or Markdown. Processing happens locally with our rule-based engine.
+          DOCX, PDF, TXT, Markdown or LaTeX (.tex). Processing happens locally with our rule-based engine.
         </p>
         <span className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-white">
           <FileText size={16} /> Select file
@@ -348,7 +391,7 @@ export default function DocumentWorkspace() {
                 </button>
                 {exportOpen && (
                   <div className="absolute right-0 z-10 mt-2 w-40 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
-                    {(['docx', 'txt', 'md', 'pdf'] as const).map((format) => (
+                    {(['docx', 'txt', 'md', 'pdf', 'tex'] as const).map((format) => (
                       <button key={format} onClick={() => handleExport(format)} className="block w-full px-4 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700">
                         {format.toUpperCase()}
                       </button>
@@ -493,6 +536,61 @@ export default function DocumentWorkspace() {
                 {selected && (
                   <div className="space-y-3">
                     <p className="text-xs text-neutral-500">Paragraph {selected.index + 1} · {selected.versions.length} versions</p>
+                    <div className="rounded-lg border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-900 dark:bg-primary-900/10">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-neutral-800 dark:text-neutral-100">Hybrid suggestion review</p>
+                          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">Generate traceable proposals from the rule engine and any enabled local providers. Nothing is applied automatically.</p>
+                        </div>
+                        <button onClick={() => void handleHybridAnalysis(selected)} disabled={hybridLoading} className="btn-primary inline-flex items-center gap-2">
+                          {hybridLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                          {hybridLoading ? 'Analyzing…' : 'Analyze paragraph'}
+                        </button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={useSpacyContext} onChange={(event) => setUseSpacyContext(event.target.checked)} />
+                          Include spaCy context
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={useLocalOllama} onChange={(event) => setUseLocalOllama(event.target.checked)} />
+                          Include local Ollama
+                        </label>
+                      </div>
+                      {(useSpacyContext || useLocalOllama) && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Selected providers must be enabled and configured by the backend administrator.</p>}
+                      {hybridResult && hybridResult.paragraph_id === selected.id && (
+                        <div className="mt-4 space-y-3">
+                          <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{hybridResult.proposals.length} proposal(s) · {hybridResult.applied ? 'Applied' : 'Not applied'} · Review required: {hybridResult.review_required ? 'Yes' : 'No'}</p>
+                          {hybridResult.proposals.length === 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">No additional supported suggestions were produced. The paragraph remains unchanged.</p>}
+                          {hybridResult.proposals.map((proposal) => (
+                            <div key={proposal.proposal_id} className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                                <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-700">{proposal.source_engine.replace(/_/g, ' ')}</span>
+                                <span>{proposal.category}</span>
+                                <span>Risk: {proposal.semantic_risk}</span>
+                                {proposal.rule_id && <span>Rule: {proposal.rule_id}</span>}
+                              </div>
+                              <p className="text-sm leading-relaxed text-neutral-500 line-through">{proposal.original_text}</p>
+                              <p className="mt-2 text-sm leading-relaxed text-neutral-800 dark:text-neutral-100">{proposal.suggested_text}</p>
+                              {proposal.explanation && <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{proposal.explanation}</p>}
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <button onClick={() => void handleHybridReview(proposal, 'accept')} disabled={!!hybridDecisions[proposal.proposal_id]} className="btn-primary inline-flex items-center gap-2">
+                                  <ThumbsUp size={14} /> Accept
+                                </button>
+                                <button onClick={() => void handleHybridReview(proposal, 'reject')} disabled={!!hybridDecisions[proposal.proposal_id]} className="btn-secondary inline-flex items-center gap-2">
+                                  <X size={14} /> Reject
+                                </button>
+                                <button onClick={() => void handleCopyProposal(proposal)} className="btn-secondary inline-flex items-center gap-2">
+                                  <FileText size={14} /> {copiedProposalId === proposal.proposal_id ? 'Copied' : 'Copy'}
+                                </button>
+                                {hybridDecisions[proposal.proposal_id] && <span className="text-xs font-medium capitalize text-neutral-600 dark:text-neutral-300">Decision saved: {hybridDecisions[proposal.proposal_id]}</span>}
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-neutral-500">These are review-only proposals. Copy a suggestion into your own revision after checking meaning, citations, and technical accuracy.</p>
+                        </div>
+                      )}
+                    </div>
                     {selected.versions.map((version) => (
                       <div key={version.version} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
                         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">

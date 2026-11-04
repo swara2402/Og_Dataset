@@ -28,6 +28,7 @@ PROTECTED_PATTERNS: dict[str, str] = {
     "technical_id": r"\b(?:CVE-\d{4}-\d{4,}|CWE-\d+|CVSS(?::\d+(?:\.\d+)?)?|CPE:[^\s,;]+|EPSS)\b",
     "number": r"(?<![A-Za-z])\b\d+(?:[.,]\d+)*(?:\s?%)?\b",
     "equation": r"\$[^$]+\$|\\\([^)]*\\\)|\\\[[^]]*\\\]",
+    "latex_command": r"\\[A-Za-z@]+\*?(?:\[[^\]\n]*\])*(?:\{[^{}\n]*\})*",
 }
 
 PLACEHOLDER_RE = re.compile(r"__TURNITOUT_PROTECTED_\d{4}__")
@@ -35,7 +36,7 @@ PLACEHOLDER_RE = re.compile(r"__TURNITOUT_PROTECTED_\d{4}__")
 # Numbers remain readable and are validated directly. Identifiers, citations,
 # and quotations are masked so deterministic edits cannot alter their contents.
 MASKED_TYPES = {
-    "citation", "email", "equation", "quoted_text", "technical_id", "url", "doi"
+    "citation", "email", "equation", "latex_command", "quoted_text", "technical_id", "url", "doi"
 }
 
 
@@ -176,8 +177,8 @@ class ProtectedContentMasker:
         
         # Secondary validation: verify all protected patterns still match
         for pattern_name, pattern in self.compiled_patterns.items():
-            original_matches = pattern.findall(original_text, re.I)
-            restored_matches = pattern.findall(restored, re.I)
+            original_matches = pattern.findall(original_text)
+            restored_matches = pattern.findall(restored)
             if original_matches != restored_matches:
                 return None, f"{pattern_name} integrity check failed"
         

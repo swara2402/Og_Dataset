@@ -10,11 +10,12 @@ import {
   Sliders,
   Terminal,
 } from 'lucide-react';
-import { AppSettings, useAPI } from '../contexts/APIContext';
+import { AppSettings, EngineStatus, useAPI } from '../contexts/APIContext';
 
 export default function SettingsPage() {
-  const { getSettings, updateSettings, isConnected } = useAPI();
+  const { getSettings, getEngineStatus, updateSettings, isConnected } = useAPI();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
   const [verboseLogging, setVerboseLogging] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -23,7 +24,8 @@ export default function SettingsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const current = await getSettings();
+    const [current, providers] = await Promise.all([getSettings(), getEngineStatus()]);
+    setEngineStatus(providers);
     if (!current) {
       setError('Could not load settings from the backend.');
       setLoading(false);
@@ -32,7 +34,7 @@ export default function SettingsPage() {
     setSettings(current);
     setVerboseLogging(current.rule_verbose_logging);
     setLoading(false);
-  }, [getSettings]);
+  }, [getSettings, getEngineStatus]);
 
   useEffect(() => {
     void load();
@@ -129,6 +131,40 @@ export default function SettingsPage() {
                   className="h-4 w-4 accent-primary-600"
                 />
               </label>
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/30">
+                <Terminal className="text-emerald-700 dark:text-emerald-300" size={20} />
+              </div>
+              <h2 className="text-lg font-semibold">Optional local engines</h2>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span>Deterministic Python rules</span>
+                <span className="font-medium text-green-600">Available</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>spaCy context analysis</span>
+                <span className={engineStatus?.spacy.enabled ? 'font-medium text-green-600' : 'text-neutral-500'}>
+                  {engineStatus?.spacy.enabled
+                    ? (engineStatus.spacy.available ? 'Loaded' : 'Enabled · model not loaded')
+                    : 'Disabled'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Local Ollama suggestions</span>
+                <span className={engineStatus?.ollama.enabled && engineStatus.ollama.configured ? 'font-medium text-green-600' : 'text-neutral-500'}>
+                  {engineStatus?.ollama.enabled && engineStatus.ollama.configured
+                    ? ('Enabled · ' + engineStatus.ollama.model)
+                    : 'Disabled or not configured'}
+                </span>
+              </div>
+              <p className="border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
+                Both model providers are optional and off by default. Enable them in the backend environment only when installed locally. Model suggestions remain pending until you review them.
+              </p>
             </div>
           </section>
 

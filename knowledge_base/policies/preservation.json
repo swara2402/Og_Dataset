@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "default_action": "preserve_and_flag",
+  "protected_content": [
+    "citations",
+    "urls",
+    "dois",
+    "equations",
+    "code",
+    "numbers",
+    "dates",
+    "units",
+    "technical_identifiers",
+    "quoted_text",
+    "bibliography_entries"
+  ],
+  "rules": [
+    "Never infer a missing value or citation.",
+    "Never change negation, modality, uncertainty, scope or comparison direction.",
+    "If protected content cannot be safely mapped through an edit, retain the original paragraph and report the skipped edit."
+  ]
+}

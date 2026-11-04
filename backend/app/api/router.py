@@ -17,8 +17,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import Settings, settings
-from backend.app.core.jobs import Job, ParagraphState, job_store, now_iso
+from backend.app.core.jobs import Job, ParagraphState, VersionEntry, job_store, now_iso
 from backend.app.document_processing.parser import DocumentParser
+from backend.app.engine.pipeline import HybridAnalysisPipeline
+from backend.app.providers.spacy_provider import SpacyContextProvider
+from backend.app.providers.ollama_adapter import LocalOllamaAdapter
+from backend.app.providers.ollama_suggestion_engine import OllamaSuggestionEngine
+from ollama_provider import OllamaProvider
 from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
@@ -69,6 +74,17 @@ def _get_state(job: Job, paragraph_id: str) -> ParagraphState:
 
 
 # --------------------------------------------------------------------- schemas
+class ParagraphAnalysisRequest(BaseModel):
+    paragraph_id: str = Field(min_length=1, max_length=200)
+    text: str = Field(min_length=1, max_length=50000)
+    paragraph_type: str = "body"
+    category: str = ""
+    document_context: str = Field(default="", max_length=100000)
+    academic_domain: Optional[str] = None
+    include_nlp: bool = False
+    include_local_llm: bool = False
+
+
 class UploadResponse(BaseModel):
     job_id: str
     filename: str
@@ -114,6 +130,18 @@ class RefineRequest(BaseModel):
 
 class ReviewRequest(BaseModel):
     paragraph_id: str
+    action: Literal["accept", "reject"]
+
+
+class HybridProposalReviewRequest(BaseModel):
+    paragraph_id: str = Field(min_length=1, max_length=200)
+    proposal_id: str = Field(min_length=1, max_length=200)
+    original_text: str = Field(min_length=1, max_length=50000)
+    suggested_text: str = Field(min_length=1, max_length=50000)
+    source_engine: str = Field(min_length=1, max_length=80)
+    category: str = Field(default="style", max_length=120)
+    explanation: str = Field(default="", max_length=2000)
+    semantic_risk: str = Field(default="unknown", max_length=30)
     action: Literal["accept", "reject"]
 
 
@@ -217,11 +245,11 @@ async def upload_document(
 ) -> UploadResponse:
     filename = file.filename or "document.txt"
     suffix = Path(filename).suffix.lower()
-    allowed = {".docx", ".pdf", ".txt", ".md", ".markdown", ".text"}
+    allowed = {".docx", ".pdf", ".txt", ".md", ".markdown", ".text", ".tex"}
     if suffix not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file format '{suffix or 'unknown'}'. Allowed: DOCX, PDF, TXT, MD.",
+            detail=f"Unsupported file format '{suffix or 'unknown'}'. Allowed: DOCX, PDF, TXT, MD, TEX.",
         )
     try:
         data = await file.read()
@@ -255,6 +283,7 @@ async def upload_document(
             "PDF extraction recovers text and paragraph order but may lose complex layout, "
             "columns and embedded tables."
         )
+        warnings.extend(document.metadata.get("extraction_warnings", []))
 
     for index, (paragraph, classification) in enumerate(zip(document.paragraphs, classifications)):
         eligible = classification.eligible_for_refinement
@@ -389,6 +418,7 @@ async def cancel_processing(job_id: str) -> CancelResponse:
         job.task.cancel()
     job.status = "cancelled"
     job.progress["phase"] = "cancelled"
+    job_store.save(job)
     return CancelResponse(job_id=job_id, cancelled=True, message="Processing cancellation requested.")
 
 
@@ -417,16 +447,87 @@ async def refine_paragraph(job_id: str, request: RefineRequest) -> Dict[str, Any
             style=request.style or job.style,
             pass_number=request.pass_number,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     job.writing_quality = None
     job.ai_indicators = None
     job.originality = None
+    job_store.save(job)
     return {
         "job_id": job.job_id,
         "paragraph": state.to_dict(),
         "statistics": job.statistics,
     }
+
+
+@api_router.post("/processing/{job_id}/proposal-review")
+async def review_hybrid_proposal(job_id: str, request: HybridProposalReviewRequest) -> Dict[str, Any]:
+    """Persist an explicit decision for a hybrid suggestion after integrity checks."""
+    job = _get_job(job_id)
+    if job.status in {"queued", "processing"}:
+        raise HTTPException(status_code=409, detail="Wait for document processing to finish.")
+    state = _get_state(job, request.paragraph_id)
+    if state.paragraph_type != "body" or not state.eligible:
+        raise HTTPException(status_code=409, detail="Hybrid suggestions can only be reviewed for eligible body prose.")
+    if request.original_text != state.current_text:
+        raise HTTPException(status_code=409, detail="This suggestion is stale because the paragraph changed. Analyze it again.")
+
+    masker = ProtectedContentMasker()
+    candidate_masked, candidate_replacements, _ = masker.mask(request.suggested_text)
+    restored, validation_error = masker.restore_and_validate(
+        request.original_text, candidate_masked, candidate_replacements
+    )
+    if restored is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Suggestion failed protected-content validation: {validation_error}.",
+        )
+    if not masker.is_meaningful_change(request.original_text, restored):
+        raise HTTPException(status_code=422, detail="Suggestion does not make a meaningful text change.")
+
+    version_validation = {
+        "protected_content_integrity": "passed",
+        "proposal_id": request.proposal_id,
+        "source_engine": request.source_engine,
+        "semantic_risk": request.semantic_risk,
+        "decision": request.action,
+    }
+    if request.action == "accept":
+        state.add_version(
+            text=restored,
+            masked_text=candidate_masked,
+            pass_number=len(state.versions),
+            source=f"hybrid:{request.source_engine}",
+            instruction=request.explanation or "Accepted hybrid suggestion",
+            validation=version_validation,
+            edit_scope=request.category,
+            change_summary=[request.explanation] if request.explanation else [],
+            requires_human_review=True,
+        )
+        state.review_status = "accepted"
+    else:
+        state.versions.append(
+            VersionEntry(
+                version=len(state.versions),
+                text=restored,
+                masked_text=candidate_masked,
+                pass_number=len(state.versions),
+                source=f"hybrid-rejected:{request.source_engine}",
+                instruction=request.explanation or "Rejected hybrid suggestion",
+                validation=version_validation,
+                edit_scope=request.category,
+                requires_human_review=True,
+            )
+        )
+        state.review_status = "rejected"
+
+    job.writing_quality = None
+    job.ai_indicators = None
+    job.originality = None
+    job_store.save(job)
+    return {"job_id": job.job_id, "paragraph": state.to_dict(), "decision": request.action}
 
 
 @api_router.post("/processing/{job_id}/review")
@@ -441,8 +542,8 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
                 (version for version in reversed(state.versions) if version.source != "original"),
                 None,
             )
-            if proposal is None:
-                raise HTTPException(status_code=409, detail="No proposed change is available.")
+            if proposal is None or proposal.source.startswith("hybrid-rejected:"):
+                raise HTTPException(status_code=409, detail="No active proposed change is available. Run analysis again.")
             state.current_text = proposal.text
             state.current_masked_text = proposal.masked_text
             state.validation = proposal.validation
@@ -463,6 +564,7 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
     job.writing_quality = None
     job.ai_indicators = None
     job.originality = None
+    job_store.save(job)
     return {
         "job_id": job.job_id,
         "paragraph": state.to_dict(),
@@ -627,9 +729,73 @@ def _export_response(job_id: str, fmt: str) -> FileResponse:
         "pdf": "application/pdf",
         "md": "text/markdown",
         "txt": "text/plain",
+        "tex": "application/x-tex",
     }
     headers = {"X-Export-Notes": " | ".join(notes)[:900]} if notes else None
     return FileResponse(path, filename=path.name, media_type=media_types.get(fmt, "application/octet-stream"), headers=headers)
+
+
+@api_router.get("/engines/status")
+async def engine_status() -> Dict[str, Any]:
+    """Report local provider configuration without making network requests."""
+    nlp = SpacyContextProvider(_settings.spacy_model).status()
+    return {
+        "deterministic_rules": {"available": True, "enabled": _settings.rule_engine_enabled},
+        "spacy": {**nlp, "enabled": _settings.spacy_enabled},
+        "ollama": {
+            "provider": "ollama",
+            "enabled": _settings.ollama_enabled,
+            "configured": bool(_settings.ollama_model),
+            "model": _settings.ollama_model or None,
+            "base_url": _settings.ollama_base_url,
+            "network_checked": False,
+        },
+        "offline_basic_available": True,
+    }
+
+
+@api_router.post("/analysis/paragraph")
+async def analyze_paragraph(request: ParagraphAnalysisRequest) -> Dict[str, Any]:
+    """Return proposals and context observations; this endpoint never applies edits."""
+    engine = _require_engine()
+    context_providers = []
+    proposal_engines = []
+
+    if request.include_nlp:
+        if not _settings.spacy_enabled:
+            raise HTTPException(status_code=409, detail="Local spaCy analysis is disabled in server settings.")
+        context_providers.append(SpacyContextProvider(_settings.spacy_model))
+
+    if request.include_local_llm:
+        if not _settings.ollama_enabled or not _settings.ollama_model:
+            raise HTTPException(status_code=409, detail="Local Ollama is not enabled or no model is configured.")
+        provider = OllamaProvider(
+            base_url=_settings.ollama_base_url,
+            api_key=_settings.ollama_api_key or None,
+            timeout=_settings.ollama_timeout,
+            num_ctx=_settings.ollama_num_ctx,
+        )
+        proposal_engines.append(
+            OllamaSuggestionEngine(LocalOllamaAdapter(provider=provider, model=_settings.ollama_model))
+        )
+
+    pipeline = HybridAnalysisPipeline(
+        engine, context_providers=context_providers, proposal_engines=proposal_engines
+    )
+    try:
+        return pipeline.analyze_paragraph(
+            request.paragraph_id,
+            request.text,
+            paragraph_type=request.paragraph_type,
+            category=request.category,
+            document_context=request.document_context or request.text,
+            academic_domain=request.academic_domain,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Paragraph analysis failed")
+        raise HTTPException(status_code=503, detail="Local analysis provider failed.") from exc
 
 
 @api_router.post("/export/{job_id}")

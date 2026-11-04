@@ -29,6 +29,13 @@ export interface HealthStatus {
   };
 }
 
+export interface EngineStatus {
+  deterministic_rules: { available: boolean; enabled: boolean };
+  spacy: { provider: string; available: boolean; enabled: boolean; model: string; error: string | null };
+  ollama: { provider: string; enabled: boolean; configured: boolean; model: string | null; base_url: string; network_checked: boolean };
+  offline_basic_available: boolean;
+}
+
 export interface AppSettings {
   engine_type: string;
   engine_status: string;
@@ -53,6 +60,34 @@ export interface AppSettings {
   };
   cache_entries: number;
   styles: WritingStyle[];
+}
+
+export interface HybridProposal {
+  proposal_id: string;
+  paragraph_id: string;
+  source_engine: string;
+  rule_id: string | null;
+  original_text: string;
+  suggested_text: string;
+  category: string;
+  explanation: string;
+  confidence: number | null;
+  semantic_risk: string;
+  requires_review: boolean;
+  status: string;
+  start_offset: number | null;
+  end_offset: number | null;
+  dataset_version: string | null;
+  model_version: string | null;
+  validation: Record<string, unknown>;
+}
+
+export interface HybridAnalysisResponse {
+  paragraph_id: string;
+  proposals: HybridProposal[];
+  context: Record<string, unknown>;
+  applied: false;
+  review_required: boolean;
 }
 
 export interface ProcessingProgress {
@@ -203,7 +238,7 @@ export interface AIIndicator {
 export interface AIReport {
   detector_available: boolean;
   detector_note: string;
-  indicator_score: number;
+  indicator_score: number | null;
   band: string;
   summary: string;
   indicators: AIIndicator[];
@@ -296,6 +331,16 @@ export interface ReviewResponse {
 interface APIContextType {
   healthCheck: () => Promise<HealthStatus | null>;
   getSettings: () => Promise<AppSettings | null>;
+  getEngineStatus: () => Promise<EngineStatus | null>;
+  analyzeParagraph: (request: {
+    paragraph_id: string;
+    text: string;
+    paragraph_type?: string;
+    category?: string;
+    document_context?: string;
+    include_nlp?: boolean;
+    include_local_llm?: boolean;
+  }) => Promise<HybridAnalysisResponse | null>;
   updateSettings: (update: Partial<AppSettings>) => Promise<AppSettings | null>;
   clearCache: () => Promise<boolean>;
   uploadDocument: (
@@ -316,6 +361,11 @@ interface APIContextType {
     paragraphId: string,
     action: 'accept' | 'reject'
   ) => Promise<ReviewResponse | null>;
+  reviewHybridProposal: (
+    jobId: string,
+    proposal: HybridProposal,
+    action: 'accept' | 'reject'
+  ) => Promise<ReviewResponse | null>;
   getAnalysisReport: (jobId: string) => Promise<AnalysisReport | null>;
   runOriginality: (options: {
     jobId?: string;
@@ -324,7 +374,7 @@ interface APIContextType {
     maxSentences?: number;
     fetchPages?: boolean;
   }) => Promise<OriginalityReport | null>;
-  exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf') => Promise<Blob | null>;
+  exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => Promise<Blob | null>;
   listJobs: () => Promise<JobSummary[]>;
   errorMessage: (error: unknown) => string;
   isConnected: boolean;
@@ -368,6 +418,33 @@ export function APIProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
+
+  const getEngineStatus = useCallback(async (): Promise<EngineStatus | null> => {
+    try {
+      const response = await api.get<EngineStatus>('/engines/status');
+      return response.data;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const analyzeParagraph = useCallback(async (request: {
+    paragraph_id: string;
+    text: string;
+    paragraph_type?: string;
+    category?: string;
+    document_context?: string;
+    include_nlp?: boolean;
+    include_local_llm?: boolean;
+  }): Promise<HybridAnalysisResponse | null> => {
+    try {
+      const response = await api.post<HybridAnalysisResponse>('/analysis/paragraph', request, { timeout: 180000 });
+      return response.data;
+    } catch (error) {
+      console.error('Hybrid paragraph analysis failed:', extractError(error));
+      return null;
+    }
+  }, []);
 
   const getSettings = useCallback(async (): Promise<AppSettings | null> => {
     try {
@@ -499,6 +576,36 @@ export function APIProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const reviewHybridProposal = useCallback(
+    async (
+      jobId: string,
+      proposal: HybridProposal,
+      action: 'accept' | 'reject'
+    ): Promise<ReviewResponse | null> => {
+      try {
+        const response = await api.post<ReviewResponse>(
+          `/processing/${jobId}/proposal-review`,
+          {
+            paragraph_id: proposal.paragraph_id,
+            proposal_id: proposal.proposal_id,
+            original_text: proposal.original_text,
+            suggested_text: proposal.suggested_text,
+            source_engine: proposal.source_engine,
+            category: proposal.category,
+            explanation: proposal.explanation,
+            semantic_risk: proposal.semantic_risk,
+            action,
+          }
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Could not ${action} hybrid proposal:`, extractError(error));
+        return null;
+      }
+    },
+    []
+  );
+
   const getAnalysisReport = useCallback(async (jobId: string): Promise<AnalysisReport | null> => {
     try {
       const response = await api.get<AnalysisReport>(`/analysis/${jobId}/report`);
@@ -539,7 +646,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
   );
 
   const exportDocument = useCallback(
-    async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf'): Promise<Blob | null> => {
+    async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex'): Promise<Blob | null> => {
       try {
         const response = await api.post(`/export/${jobId}?format=${format}`, null, {
           responseType: 'blob',
@@ -566,6 +673,8 @@ export function APIProvider({ children }: { children: ReactNode }) {
   const value: APIContextType = {
     healthCheck,
     getSettings,
+    getEngineStatus,
+    analyzeParagraph,
     updateSettings,
     clearCache,
     uploadDocument,
@@ -574,6 +683,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     cancelProcessing,
     refineParagraph,
     reviewParagraph,
+    reviewHybridProposal,
     getAnalysisReport,
     runOriginality,
     exportDocument,

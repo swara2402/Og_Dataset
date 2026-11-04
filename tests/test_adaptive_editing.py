@@ -127,3 +127,54 @@ def test_repeated_vocabulary_is_flagged_but_not_automatically_replaced():
     assert "repeated_vocabulary" in profile["issues"]
     assert result["revised_text"] == text
     assert result["requires_human_review"] is True
+
+
+
+def test_custom_refinement_instruction_is_rejected_instead_of_ignored():
+    import asyncio
+    from backend.app.core.jobs import ParagraphState
+
+    engine = HumanisationEngine(Settings())
+    state = ParagraphState(
+        id="p1",
+        index=0,
+        original_text="The original sentence remains unchanged.",
+        paragraph_type="body",
+        category="ordinary_prose",
+        section=None,
+        eligible=True,
+    )
+
+    try:
+        asyncio.run(
+            engine.refine_paragraph(
+                None, state, instruction="Make this paragraph more concise."
+            )
+        )
+    except ValueError as exc:
+        assert "not supported yet" in str(exc)
+    else:
+        raise AssertionError("Unsupported instructions must not be silently ignored")
+
+
+def test_unimplemented_style_transformation_is_rejected():
+    import asyncio
+    from backend.app.core.jobs import ParagraphState
+
+    engine = HumanisationEngine(Settings())
+    state = ParagraphState(
+        id="p1",
+        index=0,
+        original_text="The original sentence remains unchanged.",
+        paragraph_type="body",
+        category="ordinary_prose",
+        section=None,
+        eligible=True,
+    )
+
+    try:
+        asyncio.run(engine.refine_paragraph(None, state, style="concise"))
+    except ValueError as exc:
+        assert "not implemented yet" in str(exc)
+    else:
+        raise AssertionError("Unsupported style transformations must be rejected")

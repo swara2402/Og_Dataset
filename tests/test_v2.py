@@ -12,10 +12,11 @@ import io
 from datetime import datetime, timezone
 
 import pytest
+from fastapi import HTTPException
 from docx import Document as DocxDocument
 
 from backend.app.core.config import Settings
-from backend.app.core.jobs import Job, ParagraphState, job_store
+from backend.app.core.jobs import Job, ParagraphState, VersionEntry, job_store
 from backend.app.document_processing.parser import (
     DocumentParagraph,
     DocumentParser,
@@ -69,6 +70,48 @@ def _job(paragraphs, *, filename="sample.txt", file_type="txt", original_bytes=b
         paragraphs=states,
         original_bytes=original_bytes,
     )
+
+
+def test_rejected_hybrid_suggestion_stays_in_history_but_is_not_active_proposal():
+    state = ParagraphState(
+        id="p-rejected",
+        index=0,
+        original_text="The original paragraph remains unchanged.",
+        paragraph_type="body",
+        category="ordinary_prose",
+        section=None,
+        eligible=True,
+    )
+    earlier_text = "An earlier suggestion that is now superseded."
+    state.versions.append(
+        VersionEntry(
+            version=1,
+            text=earlier_text,
+            masked_text=earlier_text,
+            pass_number=1,
+            source="rule-based",
+        )
+    )
+    rejected_text = "The rejected alternative wording."
+    state.versions.append(
+        VersionEntry(
+            version=2,
+            text=rejected_text,
+            masked_text=rejected_text,
+            pass_number=2,
+            source="hybrid-rejected:local_llm",
+        )
+    )
+    state.review_status = "rejected"
+
+    serialized = state.to_dict()
+
+    assert serialized["proposal"] is None
+    assert serialized["revised"] == "The original paragraph remains unchanged."
+    assert serialized["review_status"] == "rejected"
+    assert serialized["versions"][-1]["text"] == rejected_text
+    assert serialized["versions"][-1]["source"] == "hybrid-rejected:local_llm"
+    assert serialized["versions"][-2]["text"] == earlier_text
 
 
 def test_classifier_does_not_treat_prose_mention_as_heading():
@@ -173,8 +216,8 @@ def test_quality_and_ai_analysis_are_explicitly_heuristic():
     assert quality["word_count"] > 0
     assert report["detector_available"] is False
     assert "not a verified AI-detection score" in report["detector_note"]
-    assert 0 <= report["indicator_score"] <= 100
-    assert report["band"]
+    assert report["indicator_score"] is None
+    assert report["band"] == "not_a_detector"
 
 
 def test_compare_texts_reports_real_deltas():
@@ -413,6 +456,104 @@ def test_review_endpoint_accepts_and_rejects_proposals():
     )
     assert accepted["paragraph"]["revised"] == "The model was evaluated."
     assert accepted["paragraph"]["review_status"] == "accepted"
+
+
+def test_hybrid_proposal_review_persists_acceptance_and_rejects_protected_changes():
+    from backend.app.api import router
+    from backend.app.api.router import HybridProposalReviewRequest
+
+    original = "The model reports 67% accuracy and cites Smith (2023)."
+    engine = HumanisationEngine(Settings())
+
+    accepted_job = _job([_paragraph("hybrid-p1", original)])
+    accepted_job.job_id = "hybrid-review-accept-test"
+    asyncio.run(engine.process_job(accepted_job))
+    job_store.create(accepted_job)
+    accepted_state = accepted_job.paragraphs[0]
+    current = accepted_state.current_text
+    with pytest.raises(HTTPException) as stale_exc:
+        asyncio.run(
+            router.review_hybrid_proposal(
+                accepted_job.job_id,
+                HybridProposalReviewRequest(
+                    paragraph_id="hybrid-p1",
+                    proposal_id="proposal-stale",
+                    original_text="An outdated paragraph snapshot.",
+                    suggested_text="A stale alternative paragraph.",
+                    source_engine="rule_engine",
+                    action="accept",
+                ),
+            )
+        )
+    assert stale_exc.value.status_code == 409
+    accepted = asyncio.run(
+        router.review_hybrid_proposal(
+            accepted_job.job_id,
+            HybridProposalReviewRequest(
+                paragraph_id="hybrid-p1",
+                proposal_id="proposal-1",
+                original_text=current,
+                suggested_text="The model achieves 67% accuracy, as reported by Smith (2023).",
+                source_engine="rule_engine",
+                explanation="Clarifies the result statement.",
+                action="accept",
+            ),
+        )
+    )
+    assert accepted["decision"] == "accept"
+    assert accepted["paragraph"]["review_status"] == "accepted"
+    assert accepted["paragraph"]["revised"] == "The model achieves 67% accuracy, as reported by Smith (2023)."
+    assert accepted["paragraph"]["versions"][-1]["source"] == "hybrid:rule_engine"
+
+    rejected_job = _job([_paragraph("hybrid-p2", original)])
+    rejected_job.job_id = "hybrid-review-reject-test"
+    asyncio.run(engine.process_job(rejected_job))
+    job_store.create(rejected_job)
+    rejected_state = rejected_job.paragraphs[0]
+    rejected_original = rejected_state.current_text
+    rejected = asyncio.run(
+        router.review_hybrid_proposal(
+            rejected_job.job_id,
+            HybridProposalReviewRequest(
+                paragraph_id="hybrid-p2",
+                proposal_id="proposal-2",
+                original_text=rejected_original,
+                suggested_text="The model reports 67% accuracy and cites Smith (2023) clearly.",
+                source_engine="local_llm",
+                action="reject",
+            ),
+        )
+    )
+    assert rejected["decision"] == "reject"
+    assert rejected["paragraph"]["review_status"] == "rejected"
+    assert rejected["paragraph"]["revised"] == rejected_original
+    assert rejected["paragraph"]["versions"][-1]["source"] == "hybrid-rejected:local_llm"
+    assert rejected["paragraph"]["proposal"] is None
+
+    with pytest.raises(HTTPException) as reaccept_exc:
+        asyncio.run(
+            router.review_paragraph(
+                rejected_job.job_id,
+                router.ReviewRequest(paragraph_id="hybrid-p2", action="accept"),
+            )
+        )
+    assert reaccept_exc.value.status_code == 409
+
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            router.review_hybrid_proposal(
+                rejected_job.job_id,
+                HybridProposalReviewRequest(
+                    paragraph_id="hybrid-p2",
+                    proposal_id="proposal-3",
+                    original_text=rejected_original,
+                    suggested_text=rejected_original.replace("67%", "99%"),
+                    source_engine="local_llm",
+                    action="accept",
+                ),
+            )
+        )
+    assert exc.value.status_code == 422
 
 
 def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):

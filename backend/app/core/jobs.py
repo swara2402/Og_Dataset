@@ -151,9 +151,17 @@ class ParagraphState:
         return self.current_text != self.original_text
 
     def to_dict(self, include_versions: bool = True) -> Dict[str, Any]:
-        proposal = next(
-            (version.text for version in reversed(self.versions) if version.source != "original"),
+        # Only the newest non-original version can represent the active proposal.
+        # If that newest version was rejected, older suggestions must not reappear.
+        latest_proposal = next(
+            (version for version in reversed(self.versions) if version.source != "original"),
             None,
+        )
+        proposal = (
+            latest_proposal.text
+            if latest_proposal is not None
+            and not latest_proposal.source.startswith("hybrid-rejected:")
+            else None
         )
         data: Dict[str, Any] = {
             "id": self.id,
@@ -292,4 +300,205 @@ class JobStore:
                 self._jobs.pop(job.job_id, None)
 
 
-job_store = JobStore()
+class SQLiteJobStore(JobStore):
+    """SQLite-backed local job history with JSON snapshots (no executable serialization)."""
+
+    def __init__(self, max_jobs: int = 50, db_path: Optional[str] = None):
+        import os
+        import sqlite3
+        from pathlib import Path
+        self.max_jobs = max_jobs
+        self._jobs = {}
+        configured = db_path or os.getenv("OG_DATASET_DB_PATH")
+        self.db_path = Path(configured) if configured else Path(__file__).resolve().parents[2] / "data" / "jobs.sqlite3"
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._sqlite3 = sqlite3
+        with self._connect() as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS jobs (job_id TEXT PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)"
+            )
+            rows = connection.execute(
+                "SELECT payload FROM jobs ORDER BY created_at DESC LIMIT ?", (self.max_jobs,)
+            ).fetchall()
+            all_rows = connection.execute("SELECT payload FROM jobs").fetchall()
+        for (payload,) in all_rows:
+            try:
+                job = self._decode(payload)
+                if job.status in {"queued", "processing"}:
+                    self.save(self._recover_interrupted(job))
+            except Exception:
+                continue
+        for (payload,) in rows:
+            try:
+                job = self._recover_interrupted(self._decode(payload))
+                self._jobs[job.job_id] = job
+            except Exception:
+                # A corrupt snapshot must not prevent the local editor from starting.
+                continue
+
+    @staticmethod
+    def _recover_interrupted(job: Job) -> Job:
+        if job.status in {"queued", "processing"}:
+            job.status = "failed"
+            job.error = (
+                "Processing was interrupted by an application restart. "
+                "The saved document and edits are available for review."
+            )
+            job.finished_at = time.time()
+        return job
+
+    def _connect(self):
+        connection = self._sqlite3.connect(str(self.db_path), timeout=10)
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA foreign_keys=ON")
+        return connection
+
+    @staticmethod
+    def _encode(job: Job) -> str:
+        import base64
+        import json
+        from dataclasses import asdict
+        document = {
+            "filename": job.document.filename,
+            "file_type": job.document.file_type,
+            "metadata": job.document.metadata,
+            "paragraphs": [
+                {"id": p.id, "text": p.text, "paragraph_type": p.paragraph_type,
+                 "location": p.location, "metadata": p.metadata}
+                for p in job.document.paragraphs
+            ],
+        }
+        paragraphs = []
+        for state in job.paragraphs:
+            paragraphs.append({
+                "id": state.id, "index": state.index, "original_text": state.original_text,
+                "paragraph_type": state.paragraph_type, "category": state.category,
+                "section": state.section, "eligible": state.eligible, "masked_text": state.masked_text,
+                "replacements": state.replacements, "protected_items": state.protected_items,
+                "current_text": state.current_text, "current_masked_text": state.current_masked_text,
+                "status": state.status, "warnings": state.warnings, "validation": state.validation,
+                "error": state.error, "attempts": state.attempts, "elapsed_seconds": state.elapsed_seconds,
+                "versions": [asdict(v) for v in state.versions],
+                "applied_rule_ids": state.applied_rule_ids, "edit_rationale": state.edit_rationale,
+                "editing_level_applied": state.editing_level_applied, "issues_found": state.issues_found,
+                "edit_scope": state.edit_scope, "change_summary": state.change_summary,
+                "requires_human_review": state.requires_human_review, "review_status": state.review_status,
+            })
+        payload = {
+            "job_id": job.job_id, "filename": job.filename, "file_type": job.file_type,
+            "content_type": job.content_type, "created_at": job.created_at, "style": job.style,
+            "options": job.options, "document": document, "paragraphs": paragraphs,
+            "original_bytes": base64.b64encode(job.original_bytes).decode("ascii"),
+            "status": job.status, "progress": job.progress, "error": job.error,
+            "started_at": job.started_at, "finished_at": job.finished_at,
+            "statistics": job.statistics, "writing_quality": job.writing_quality,
+            "ai_indicators": job.ai_indicators, "originality": job.originality,
+        }
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+    @staticmethod
+    def _decode(payload: str) -> Job:
+        import base64
+        import json
+        from backend.app.document_processing.parser import ParsedDocument, DocumentParagraph
+        data = json.loads(payload)
+        document_data = data["document"]
+        document = ParsedDocument(
+            filename=document_data["filename"], file_type=document_data["file_type"],
+            metadata=document_data.get("metadata", {}),
+            paragraphs=[DocumentParagraph(**p) for p in document_data.get("paragraphs", [])],
+        )
+        states = []
+        for item in data["paragraphs"]:
+            state_data = dict(item)
+            state_data["versions"] = [VersionEntry(**v) for v in state_data.get("versions", [])]
+            states.append(ParagraphState(**state_data))
+        job = Job(
+            job_id=data["job_id"], filename=data["filename"], file_type=data["file_type"],
+            content_type=data["content_type"], created_at=data["created_at"], style=data["style"],
+            options=data.get("options", {}), document=document, paragraphs=states,
+            original_bytes=base64.b64decode(data.get("original_bytes", "")),
+            status=data.get("status", "failed"), progress=data.get("progress", {}),
+            error=data.get("error"), started_at=data.get("started_at"),
+            finished_at=data.get("finished_at"), statistics=data.get("statistics", {}),
+            writing_quality=data.get("writing_quality"), ai_indicators=data.get("ai_indicators"),
+            originality=data.get("originality"),
+        )
+        # Rehydrate format-specific source elements from the original upload where possible.
+        if job.original_bytes:
+            try:
+                from backend.app.document_processing.parser import DocumentParser
+                job.document = DocumentParser.parse_bytes(job.original_bytes, job.filename)
+            except Exception:
+                pass
+        return job
+
+    def save(self, job: Job) -> Job:
+        payload = self._encode(job)
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO jobs(job_id, created_at, payload) VALUES(?,?,?) "
+                "ON CONFLICT(job_id) DO UPDATE SET created_at=excluded.created_at, payload=excluded.payload",
+                (job.job_id, job.created_at, payload),
+            )
+        self._jobs[job.job_id] = job
+        return job
+
+    def create(self, job: Job) -> Job:
+        self.save(job)
+        self._prune()
+        return job
+
+    def get(self, job_id: str) -> Optional[Job]:
+        job = self._jobs.get(job_id)
+        if job is not None:
+            return job
+        with self._connect() as connection:
+            row = connection.execute("SELECT payload FROM jobs WHERE job_id=?", (job_id,)).fetchone()
+        if not row:
+            return None
+        try:
+            job = self._recover_interrupted(self._decode(row[0]))
+            if job.status == "failed" and job.error and "interrupted by an application restart" in job.error:
+                self.save(job)
+            else:
+                self._jobs[job_id] = job
+            return job
+        except Exception:
+            return None
+
+    def list(self) -> List[Job]:
+        return sorted(self._jobs.values(), key=lambda item: item.created_at, reverse=True)
+
+    def delete(self, job_id: str) -> bool:
+        self._jobs.pop(job_id, None)
+        with self._connect() as connection:
+            cursor = connection.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+        return cursor.rowcount > 0
+
+    def _prune(self) -> None:
+        # Prune the persistent table, not just the in-memory cache; otherwise
+        # old completed snapshots accumulate indefinitely across restarts.
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT job_id, payload FROM jobs ORDER BY created_at ASC"
+            ).fetchall()
+            excess = len(rows) - self.max_jobs
+            if excess <= 0:
+                return
+            for job_id, payload in rows:
+                if excess <= 0:
+                    break
+                try:
+                    job = self._decode(payload)
+                except Exception:
+                    # Leave unreadable snapshots untouched for manual recovery.
+                    continue
+                if job.status in {"processing", "queued"}:
+                    continue
+                connection.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+                self._jobs.pop(job_id, None)
+                excess -= 1
+
+
+job_store = SQLiteJobStore()

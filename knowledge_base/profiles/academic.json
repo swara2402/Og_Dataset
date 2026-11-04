@@ -1,0 +1,27 @@
+{
+  "id": "academic",
+  "version": "1.0.0",
+  "description": "Conservative academic editing; preserve evidence, terminology, uncertainty and author voice.",
+  "enabled_categories": [
+    "grammar",
+    "clarity",
+    "precision",
+    "coherence",
+    "concision"
+  ],
+  "default_intervention": "minimal",
+  "require_human_review_for": [
+    "sentence",
+    "paragraph"
+  ],
+  "preserve": [
+    "citations",
+    "equations",
+    "numbers",
+    "units",
+    "technical_terms",
+    "quotes",
+    "negation",
+    "modality"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Og_Dataset rule",
+  "type": "object",
+  "required": [
+    "id",
+    "category",
+    "name",
+    "guidance",
+    "apply_when",
+    "do_not_apply_when",
+    "preservation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "guidance": {
+      "type": "string"
+    },
+    "apply_when": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "do_not_apply_when": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "preservation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

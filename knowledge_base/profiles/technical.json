@@ -1,0 +1,27 @@
+{
+  "id": "technical",
+  "version": "1.0.0",
+  "description": "Technical-document editing that prioritizes exact terminology, identifiers, units and procedural meaning.",
+  "enabled_categories": [
+    "grammar",
+    "clarity",
+    "precision",
+    "consistency"
+  ],
+  "default_intervention": "minimal",
+  "require_human_review_for": [
+    "sentence",
+    "paragraph"
+  ],
+  "preserve": [
+    "api_names",
+    "code",
+    "identifiers",
+    "equations",
+    "numbers",
+    "units",
+    "citations",
+    "warnings",
+    "negation"
+  ]
+}

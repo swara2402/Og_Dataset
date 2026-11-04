@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Og_Dataset editing policy",
+  "type": "object",
+  "required": [
+    "version",
+    "purpose",
+    "default_strategy",
+    "decision_order",
+    "edit_scope_priority",
+    "levels",
+    "fallback",
+    "validation",
+    "output_modes"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "default_strategy": {
+      "const": "minimal_edit"
+    },
+    "decision_order": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "edit_scope_priority": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "word",
+          "phrase",
+          "sentence",
+          "paragraph"
+        ]
+      }
+    },
+    "levels": {
+      "type": "object",
+      "required": [
+        "minimal",
+        "moderate",
+        "substantial"
+      ]
+    },
+    "fallback": {
+      "type": "object",
+      "required": [
+        "when",
+        "action"
+      ]
+    },
+    "validation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

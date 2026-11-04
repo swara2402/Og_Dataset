@@ -13,3 +13,7 @@ backend/exports/*
 !backend/uploads/.gitkeep
 !backend/exports/.gitkeep
 .DS_Store
+
+backend/data/*.sqlite3
+backend/data/*.sqlite3-shm
+backend/data/*.sqlite3-wal

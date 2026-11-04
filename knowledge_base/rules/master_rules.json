@@ -1,0 +1,194 @@
+{
+  "version": "1.1.0",
+  "purpose": "Improve clarity, correctness, precision, and consistency while preserving the author's meaning, evidence, terminology, and voice.",
+  "rules": [
+    {
+      "id": "CLARITY-001",
+      "category": "clarity",
+      "name": "Resolve genuinely ambiguous references",
+      "guidance": "Clarify a pronoun or demonstrative only when its intended referent is unambiguous from the surrounding context.",
+      "apply_when": [
+        "A reference has multiple plausible interpretations."
+      ],
+      "do_not_apply_when": [
+        "The reference is already clear.",
+        "Naming a referent would require an assumption."
+      ],
+      "preservation": [
+        "Keep the original claim and scope."
+      ]
+    },
+    {
+      "id": "WORDCHOICE-001",
+      "category": "word_choice",
+      "name": "Use a more precise contextual word when needed",
+      "guidance": "Replace a word only when the alternative is a closer fit for the intended meaning, discipline, and sentence context. Prefer familiar, precise academic language over decorative or unnecessarily complex vocabulary.",
+      "apply_when": [
+        "A word is vague, inaccurate, awkward, or inconsistent with the concept it describes."
+      ],
+      "do_not_apply_when": [
+        "The original word is already accurate.",
+        "The proposed alternative only changes style without improving meaning or clarity.",
+        "The alternative changes technical meaning, certainty, emphasis, or scope."
+      ],
+      "preservation": [
+        "Do not perform synonym rotation.",
+        "Do not choose a synonym merely to make text look different.",
+        "Keep domain-specific terms when they are the correct terms."
+      ]
+    },
+    {
+      "id": "REPETITION-001",
+      "category": "repetition",
+      "name": "Reduce distracting local repetition",
+      "guidance": "When the same non-technical word is repeated close together and the repetition distracts from reading, consider a contextually accurate alternative or remove a genuinely redundant occurrence.",
+      "apply_when": [
+        "A non-essential word or phrase is repeated nearby without adding emphasis or precision."
+      ],
+      "do_not_apply_when": [
+        "Repetition is needed for clarity, terminology consistency, emphasis, or formal structure.",
+        "A synonym would be less precise."
+      ],
+      "preservation": [
+        "Never vary a technical term solely to avoid repetition.",
+        "Retain all distinct information."
+      ]
+    },
+    {
+      "id": "PHRASE-001",
+      "category": "phrase_editing",
+      "name": "Make a phrase clearer without rebuilding the sentence",
+      "guidance": "Replace or trim a local phrase when it is wordy, vague, grammatically awkward, or unnecessarily indirect. Preserve the surrounding sentence structure whenever possible.",
+      "apply_when": [
+        "A phrase-level issue can be fixed locally."
+      ],
+      "do_not_apply_when": [
+        "The phrase is already clear and appropriate.",
+        "A local edit would distort the intended relationship."
+      ],
+      "preservation": [
+        "Keep the original proposition, emphasis, and qualifications."
+      ]
+    },
+    {
+      "id": "PRECISION-001",
+      "category": "precision",
+      "name": "Prefer precise wording over vague wording",
+      "guidance": "Replace imprecise wording only when the source provides enough information to make the wording more exact.",
+      "apply_when": [
+        "A phrase is unnecessarily broad or unclear."
+      ],
+      "do_not_apply_when": [
+        "A more specific phrase would add information not present in the source."
+      ],
+      "preservation": [
+        "Do not strengthen, weaken, or expand claims."
+      ]
+    },
+    {
+      "id": "GRAMMAR-001",
+      "category": "grammar",
+      "name": "Correct grammatical errors without changing the claim",
+      "guidance": "Correct clear agreement, tense, article, preposition, spelling, and punctuation errors while retaining meaning.",
+      "apply_when": [
+        "A clear grammatical or mechanical error is present."
+      ],
+      "do_not_apply_when": [
+        "The construction is a valid discipline-specific convention."
+      ],
+      "preservation": [
+        "Keep technical terms, quantities, names, and relationships unchanged."
+      ]
+    },
+    {
+      "id": "COHERENCE-001",
+      "category": "coherence",
+      "name": "Make supported logical relationships clear",
+      "guidance": "Clarify cause, contrast, sequence, or qualification only when that relationship is supported by the surrounding text.",
+      "apply_when": [
+        "The relationship between adjacent ideas is difficult to follow."
+      ],
+      "do_not_apply_when": [
+        "The relationship is uncertain or would need an assumption."
+      ],
+      "preservation": [
+        "Do not invent causal links or conclusions."
+      ]
+    },
+    {
+      "id": "CONCISION-001",
+      "category": "concision",
+      "name": "Remove true redundancy",
+      "guidance": "Remove repeated information that adds no emphasis, qualification, or technical meaning.",
+      "apply_when": [
+        "The same point is repeated without a clear purpose."
+      ],
+      "do_not_apply_when": [
+        "Repetition is required for precision, safety, legal meaning, or readability."
+      ],
+      "preservation": [
+        "Retain every distinct condition and qualification."
+      ]
+    },
+    {
+      "id": "TERMINOLOGY-001",
+      "category": "terminology",
+      "name": "Maintain consistent technical terminology",
+      "guidance": "Use the same term for the same concept throughout a document unless the source intentionally distinguishes concepts.",
+      "apply_when": [
+        "A concept is named inconsistently and equivalence is certain."
+      ],
+      "do_not_apply_when": [
+        "Terms may represent different components, methods, or metrics."
+      ],
+      "preservation": [
+        "Never replace a domain term with a loose synonym."
+      ]
+    },
+    {
+      "id": "GENRE-001",
+      "category": "genre",
+      "name": "Respect document genre and audience",
+      "guidance": "Match formality, detail, structure, and terminology to the document type and intended reader.",
+      "apply_when": [
+        "The document genre and audience are known."
+      ],
+      "do_not_apply_when": [
+        "The genre or audience is unknown; use a conservative edit."
+      ],
+      "preservation": [
+        "Do not make academic or technical text casual without instruction."
+      ]
+    },
+    {
+      "id": "EVIDENCE-001",
+      "category": "evidence",
+      "name": "Preserve evidence and uncertainty",
+      "guidance": "Retain citations, numerical results, limitations, uncertainty, and the strength of the original claim.",
+      "apply_when": [
+        "Editing sentences that contain evidence, results, or qualifications."
+      ],
+      "do_not_apply_when": [
+        "A citation or result appears incomplete; flag it rather than repairing it by guesswork."
+      ],
+      "preservation": [
+        "Never fabricate citations, measurements, findings, or certainty."
+      ]
+    },
+    {
+      "id": "STRUCTURE-001",
+      "category": "structure",
+      "name": "Improve paragraph focus only when needed",
+      "guidance": "Keep each paragraph centred on a coherent idea and preserve the progression of the source argument.",
+      "apply_when": [
+        "A paragraph combines unrelated ideas or lacks a clear progression."
+      ],
+      "do_not_apply_when": [
+        "The original structure is required by a template, standard, or list format."
+      ],
+      "preservation": [
+        "Do not move claims in a way that changes their evidential context."
+      ]
+    }
+  ]
+}

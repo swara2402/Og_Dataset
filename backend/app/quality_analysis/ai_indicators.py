@@ -160,33 +160,12 @@ def analyze_ai_indicators(text: str) -> Dict[str, Any]:
         [f"{len(paragraph_lengths)} paragraph(s) measured"],
     )
 
-    weighted = sum(
-        indicator["score"] * weight
-        for indicator, weight in zip(
-            indicators,
-            [0.24, 0.16, 0.18, 0.10, 0.12, 0.08, 0.06, 0.06],
-        )
+    # Do not combine stylistic observations into an authorship-like percentage.
+    # These heuristics are descriptive prompts for human review, not detection evidence.
+    summary = (
+        "The report lists observable wording and structure patterns for optional author review. "
+        "They cannot establish whether text was written by a person or an AI system."
     )
-    overall = _clamp(weighted)
-
-    if overall >= 65:
-        band = "strong stylistic indicators"
-        summary = (
-            "Several stylistic patterns commonly found in AI-generated text are present. "
-            "This is not a detector result and does not establish that AI was used."
-        )
-    elif overall >= 40:
-        band = "moderate stylistic indicators"
-        summary = (
-            "Some formulaic phrasing and rhythm patterns were detected. "
-            "Review them as editing suggestions, not as a verdict."
-        )
-    else:
-        band = "few stylistic indicators"
-        summary = (
-            "Few heuristic AI-writing patterns were detected. "
-            "Absence of these patterns is not proof that text is human-written."
-        )
 
     return {
         "detector_available": False,
@@ -195,8 +174,8 @@ def analyze_ai_indicators(text: str) -> Dict[str, Any]:
             "not a verified AI-detection score. Different detectors produce different results "
             "and none are reliable enough to treat as fact."
         ),
-        "indicator_score": overall,
-        "band": band,
+        "indicator_score": None,
+        "band": "not_a_detector",
         "summary": summary,
         "indicators": sorted(indicators, key=lambda item: item["score"], reverse=True),
         "metrics": {
