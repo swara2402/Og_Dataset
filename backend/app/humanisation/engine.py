@@ -249,7 +249,16 @@ class RuleBasedEditingEngine:
                 (r"\bin the event that\b", "if"),
             )
             for pattern, replacement in concise_phrases:
-                candidate, count = re.subn(pattern, replacement, revised, flags=re.IGNORECASE)
+                candidate, count = re.subn(
+                    pattern,
+                    lambda match: (
+                        replacement.capitalize()
+                        if match.group(0)[:1].isupper()
+                        else replacement
+                    ),
+                    revised,
+                    flags=re.IGNORECASE,
+                )
                 if count:
                     if revised[:1].isupper():
                         candidate = candidate[:1].upper() + candidate[1:]
