@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.core.config import Settings, settings
 from backend.app.core.jobs import Job, ParagraphState, VersionEntry, job_store, now_iso
-from backend.app.api.auth import current_owner_id
+from backend.app.api.auth import current_owner_id, is_admin
 from backend.app.document_processing.parser import DocumentParser
 from backend.app.engine.pipeline import HybridAnalysisPipeline
 from backend.app.providers.spacy_provider import SpacyContextProvider
@@ -52,6 +52,11 @@ def set_global_services(
 
 
 
+
+
+def _require_admin() -> None:
+    if not is_admin(current_owner_id.get(), _settings.api_tokens, _settings.api_admin_users):
+        raise HTTPException(status_code=403, detail="Administrator permission is required.")
 
 
 def _require_engine() -> HumanisationEngine:
@@ -124,9 +129,9 @@ class SettingsUpdate(BaseModel):
 
 
 class RefineRequest(BaseModel):
-    paragraph_id: str
-    instruction: str = ""
-    style: Optional[str] = None
+    paragraph_id: str = Field(min_length=1, max_length=200)
+    instruction: str = Field(default="", max_length=2000)
+    style: Optional[str] = Field(default=None, max_length=80)
     pass_number: Optional[int] = Field(default=None, ge=1, le=10)
 
 
@@ -149,15 +154,15 @@ class HybridProposalReviewRequest(BaseModel):
 
 class OriginalityRequest(BaseModel):
     confirm_search: bool = False
-    job_id: Optional[str] = None
-    text: Optional[str] = None
-    paragraph_ids: Optional[List[str]] = None
+    job_id: Optional[str] = Field(default=None, max_length=200)
+    text: Optional[str] = Field(default=None, max_length=100000)
+    paragraph_ids: Optional[List[str]] = Field(default=None, max_length=12)
     max_sentences: int = Field(default=6, ge=1, le=12)
     fetch_pages: bool = True
 
 
 class AnalysisRequest(BaseModel):
-    text: Optional[str] = None
+    text: Optional[str] = Field(default=None, max_length=100000)
 
 
 # ------------------------------------------------------------------- health
@@ -209,6 +214,7 @@ async def get_settings() -> Dict[str, Any]:
 
 @api_router.patch("/config/settings")
 async def update_settings(update: SettingsUpdate) -> Dict[str, Any]:
+    _require_admin()
     if update.rule_verbose_logging is not None:
         _settings.rule_verbose_logging = update.rule_verbose_logging
     return await get_settings()
@@ -216,6 +222,7 @@ async def update_settings(update: SettingsUpdate) -> Dict[str, Any]:
 
 @api_router.post("/config/cache/clear")
 async def clear_cache() -> Dict[str, Any]:
+    _require_admin()
     if _engine:
         _engine.cache.clear()
     return {"cleared": True, "cache_entries": len(_engine.cache) if _engine else 0}
