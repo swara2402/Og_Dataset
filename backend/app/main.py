@@ -5,12 +5,14 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.router import api_router, health as api_health, set_global_services
 from backend.app.core.config import settings
 from backend.app.core.jobs import job_store
+from backend.app.api.auth import current_owner_id, resolve_owner
 from backend.app.humanisation.engine import HumanisationEngine
 
 logging.basicConfig(
@@ -53,6 +55,31 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+@app.middleware("http")
+async def authenticate_api_request(request: Request, call_next):
+    # Middleware applies to API routes and documentation alike. When no token
+    # map is configured, the app remains in documented localhost-only mode.
+    try:
+        owner_id = resolve_owner(
+            request.headers.get("authorization"),
+            settings.api_tokens,
+            settings.api_auth_required,
+        )
+    except ValueError as exc:
+        return JSONResponse(status_code=503, content={"detail": str(exc)})
+    except PermissionError:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": "A valid bearer token is required."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = current_owner_id.set(owner_id)
+    try:
+        return await call_next(request)
+    finally:
+        current_owner_id.reset(token)
+
 
 app.add_middleware(
     CORSMiddleware,
