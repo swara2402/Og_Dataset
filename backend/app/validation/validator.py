@@ -129,8 +129,16 @@ def validate_rewrite(
         issues.append(f"New numbers introduced: {', '.join(added_numbers[:8])}")
         critical = True
     if not numbers_ok and not missing_numbers and not added_numbers:
-        issues.append("Numbers were reordered.")
-        critical = True
+        # An explicit semantic review can approve a harmless sentence-level
+        # relocation (for example, moving a year to the sentence opening).
+        # Keep the order change visible as a warning; without that override,
+        # treat it as critical because values may have become detached from claims.
+        if semantic_similarity_override is not None and semantic_similarity_override >= min_semantic_similarity:
+            warnings.append("Numbers were reordered; confirm each value remains attached to the same claim.")
+            numbers_ok = True
+        else:
+            issues.append("Numbers were reordered.")
+            critical = True
 
     original_citations = CITATION_RE.findall(original_text)
     revised_citations = CITATION_RE.findall(revised_text)
