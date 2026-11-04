@@ -14,7 +14,7 @@ from jsonschema import Draft202012Validator, SchemaError
 _DATASET_ROOT = Path(
     os.environ.get(
         "OG_DATASET_DIR",
-        str(Path(__file__).resolve().parents[3] / "Og_Dataset"),
+        str(Path(__file__).resolve().parents[3] / "knowledge_base"),
     )
 ).expanduser()
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
@@ -94,7 +94,10 @@ def load_examples() -> List[Dict[str, Any]]:
 
 
 def load_dataset() -> Dict[str, Any]:
-    """Read the repository source at runtime so local dataset updates take effect."""
+    """Read and validate the canonical knowledge base for each document job."""
+    from backend.app.engine.dataset_validation import validate_dataset
+
+    validate_dataset(_DATASET_ROOT)
     profile_path = _DATASET_ROOT / "docs" / "reference-writing-profile.md"
     try:
         profile = profile_path.read_text(encoding="utf-8")
