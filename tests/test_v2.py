@@ -173,8 +173,8 @@ def test_quality_and_ai_analysis_are_explicitly_heuristic():
     assert quality["word_count"] > 0
     assert report["detector_available"] is False
     assert "not a verified AI-detection score" in report["detector_note"]
-    assert 0 <= report["indicator_score"] <= 100
-    assert report["band"]
+    assert report["indicator_score"] is None
+    assert report["band"] == "not_a_detector"
 
 
 def test_compare_texts_reports_real_deltas():
