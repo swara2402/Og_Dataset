@@ -9,6 +9,8 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEFAULT_CASES = ROOT / "knowledge_base/datasets/preservation_evaluation.jsonl"
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/preservation_case.schema.json"
 
