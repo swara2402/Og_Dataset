@@ -136,10 +136,13 @@ section- and discipline-level observations. The output stores statistics,
 not source sentences, and never modifies editing rules automatically.
 
 Human-edited examples use the separate
-`knowledge_base/schemas/revision_pair.schema.json` contract. A pair is not
-eligible as a trusted example until a reviewer approves it and confirms
-meaning preservation. Draft and synthetic examples remain reference material;
-they are not silently promoted into rewrite instructions. See
+`knowledge_base/schemas/revision_pair.schema.json` contract and live in
+`knowledge_base/datasets/revision_pairs.jsonl`. Validate them with
+`python scripts/validate_revision_pairs.py`. The validator rejects unknown
+licences, duplicate pairs, missing reviewer identity, and approved pairs without
+an explicit meaning-preserved decision. Draft and synthetic examples remain
+reference material; they are never promoted automatically. CI validates this
+file on every push. See
 [`knowledge_base/corpus/README.md`](./knowledge_base/corpus/README.md) for
 the manifest format, supported licence identifiers, and workflow.
 
@@ -155,6 +158,7 @@ not required.
 ```bash
 python3 -m pytest -q
 python3 scripts/validate_dataset.py
+python3 scripts/validate_revision_pairs.py
 ```
 
 The tests use local fixtures and do not call external model services.
