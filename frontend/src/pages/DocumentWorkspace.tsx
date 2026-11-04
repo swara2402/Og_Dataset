@@ -629,7 +629,7 @@ export default function DocumentWorkspace() {
             <div className="text-sm text-neutral-600 dark:text-neutral-400">
               <p className="font-medium text-neutral-800 dark:text-neutral-200">Local processing record</p>
               <p>Rule-based engine: {String(results.statistics.applied_rule_count || '0')} rules applied · Cache hits: {String(results.statistics.cache_hits || 0)}</p>
-              <p>All document content stayed on this machine. Exports preserve protected citations and numbers.</p>
+              <p>Core editing and storage are local. Optional public-web originality lookup is separate and sends only selected sentences after explicit confirmation. Exports preserve protected citations and numbers.</p>
             </div>
           </div>
         </div>
