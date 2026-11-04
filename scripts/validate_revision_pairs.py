@@ -22,11 +22,11 @@ ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-
 
 
 def canonical_text(value: str) -> str:
-    return re.sub(r"\\s+", " ", value).strip().casefold()
+    return re.sub(r"\s+", " ", value).strip().casefold()
 
 
 def pair_fingerprint(item: dict[str, Any]) -> str:
-    payload = "\\0".join((canonical_text(item["original_text"]), canonical_text(item["edited_text"])))
+    payload = "\0".join((canonical_text(item["original_text"]), canonical_text(item["edited_text"])))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -91,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.approved_output is not None:
         args.approved_output.parent.mkdir(parents=True, exist_ok=True)
         args.approved_output.write_text(
-            "".join(json.dumps(pair, ensure_ascii=False) + "\\n" for pair in approved),
+            "".join(json.dumps(pair, ensure_ascii=False) + "\n" for pair in approved),
             encoding="utf-8",
         )
         summary["approved_output"] = str(args.approved_output)
