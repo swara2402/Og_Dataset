@@ -150,3 +150,11 @@ The follow-up code changes are in commits after the original audit snapshot. CI 
 - Added a synthetic preservation regression set covering safe mechanical edits and negative controls for uncertainty, negation, numbers, citations and technical identifiers.
 - The benchmark uses the shared preservation validator and is included in CI. It is a regression guard, not proof of semantic equivalence or expert linguistic quality.
 - The first CI attempt exposed that the standalone benchmark script did not add the repository root to `sys.path`; that runner issue was fixed in the follow-up commit. Final verification is pending on the current main SHA.
+
+
+## Discipline- and section-specific linguistic pattern dataset
+
+- Added a schema and JSONL validator for abstract linguistic patterns with discipline, document section, structural template, rhetorical function, usage context, caution conditions, source licence, attribution and review status.
+- Duplicate pattern names within the same discipline/section are rejected.
+- The dataset starts empty. No published-paper sentences or unverified patterns have been inserted.
+- The validator is included in CI. Reviewed abstract patterns may inform guidance, but they are not used to auto-generate or rewrite user prose.
