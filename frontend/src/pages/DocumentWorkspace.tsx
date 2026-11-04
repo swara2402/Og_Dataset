@@ -136,6 +136,7 @@ export default function DocumentWorkspace() {
       'application/pdf': ['.pdf'],
       'text/plain': ['.txt'],
       'text/markdown': ['.md'],
+      'text/x-tex': ['.tex'],
     },
     maxFiles: 1,
     onDrop: async (acceptedFiles) => {
@@ -185,7 +186,7 @@ export default function DocumentWorkspace() {
     navigate('/document', { replace: true });
   };
 
-  const handleExport = async (format: 'docx' | 'txt' | 'md' | 'pdf') => {
+  const handleExport = async (format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => {
     if (!file?.jobId) return;
     setExportOpen(false);
     const blob = await exportDocument(file.jobId, format);
@@ -265,7 +266,7 @@ export default function DocumentWorkspace() {
         <Upload className="mx-auto mb-4 h-12 w-12 text-neutral-400" />
         <h3 className="mb-2 text-lg font-medium">{isDragActive ? 'Drop your document' : 'Upload a document'}</h3>
         <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
-          DOCX, PDF, TXT or Markdown. Processing happens locally with our rule-based engine.
+          DOCX, PDF, TXT, Markdown or LaTeX (.tex). Processing happens locally with our rule-based engine.
         </p>
         <span className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-white">
           <FileText size={16} /> Select file
@@ -333,7 +334,7 @@ export default function DocumentWorkspace() {
                 </button>
                 {exportOpen && (
                   <div className="absolute right-0 z-10 mt-2 w-40 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800">
-                    {(['docx', 'txt', 'md', 'pdf'] as const).map((format) => (
+                    {(['docx', 'txt', 'md', 'pdf', 'tex'] as const).map((format) => (
                       <button key={format} onClick={() => handleExport(format)} className="block w-full px-4 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700">
                         {format.toUpperCase()}
                       </button>
