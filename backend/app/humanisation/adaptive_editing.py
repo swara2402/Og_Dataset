@@ -20,6 +20,23 @@ _DATASET_ROOT = Path(
     )
 ).expanduser()
 _REPEAT_WORD_RE = re.compile(r"\b([A-Za-z]{2,})[ \t]+\1\b", re.I)
+_PLURAL_SUBJECTS = (
+    "results", "findings", "methods", "models", "systems", "participants",
+    "experiments", "observations", "analyses", "variables", "features",
+    "approaches", "studies", "datasets", "measurements", "samples",
+    "responses", "outcomes", "factors", "authors", "researchers", "algorithms",
+    "parameters", "values", "records", "documents", "papers",
+)
+_SINGULAR_VERBS = (
+    "is", "was", "has", "does", "shows", "indicates", "demonstrates",
+    "suggests", "provides", "reports", "reveals", "remains", "increases",
+    "decreases", "affects", "leads", "contains", "includes", "requires",
+    "uses", "produces", "improves",
+)
+_SUBJECT_VERB_RE = re.compile(
+    rf"\b({'|'.join(_PLURAL_SUBJECTS)})\s+({'|'.join(_SINGULAR_VERBS)})\b",
+    re.I,
+)
 _SAFE_REPEAT_WORDS = {"a", "an", "and", "in", "of", "the", "to"}
 _COMMON_WORDS = {
     "a", "an", "and", "are", "as", "at", "be", "been", "by", "for", "from",
@@ -209,6 +226,8 @@ def assess_editing_needs(text: str) -> Dict[str, Any]:
     issues: List[str] = []
     if _REPEAT_WORD_RE.search(value):
         issues.append("accidental_repeated_word")
+    if _SUBJECT_VERB_RE.search(value):
+        issues.append("subject_verb_agreement")
     punctuation_probe = re.sub(r"\b(?:e\.g|i\.e)\.", "ABBREVIATION", value, flags=re.I)
     punctuation_probe = re.sub(r"\b(?:[A-Z]\.){2,}", "INITIALISM", punctuation_probe)
     missing_abbreviation_space = re.search(
