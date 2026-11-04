@@ -41,8 +41,9 @@ Requirements: Python 3.12+ and Node.js 18+.
 ```bash
 python3 -m pip install -r requirements.txt
 # Optional: install spaCy for local linguistic context analysis
-python3 -m pip install -r requirements-nlp.txt
-# Optional: download a spaCy language model separately when needed
+# Optional NLP dependencies and model (install only when enabling spaCy):
+# python3 -m pip install -r requirements-nlp.txt
+# python3 -m spacy download en_core_web_sm
 # python3 -m spacy download en_core_web_sm
 cd frontend
 npm install
