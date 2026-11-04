@@ -158,6 +158,6 @@ def test_hyperlink_paragraph_is_preserved_and_reported_as_not_rewritten():
     exported = Document(io.BytesIO(_docx_bytes(job)))
     xml = exported.paragraphs[0]._p.xml
     assert "the source" in xml
-    assert "https://example.org/source" in str(exported.part.rels)
+    assert exported.part.rels[relationship_id].target_ref == "https://example.org/source"
     assert exported.paragraphs[0].text == item.text
     assert any("1 accepted edit(s) were not applied" in note for note in export_notes(job, "docx"))
