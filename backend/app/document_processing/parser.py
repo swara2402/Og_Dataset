@@ -97,7 +97,7 @@ class DocumentParser:
             return DocumentParser._parse_file(file_path, filename)
 
     @staticmethod
-    def parse_bytes(data: bytes, filename: str, file_type: str | None = None) -> ParsedDocument:
+    def parse_bytes(data: bytes, filename: str, file_type: str | None = None, *, enable_pdf_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         """Parse an in-memory upload. `file_type` is advisory; the suffix wins."""
         suffix = Path(filename).suffix.lower()
         if file_type and not suffix:
@@ -105,7 +105,7 @@ class DocumentParser:
         if suffix == ".docx":
             return DocxParser.parse_bytes(data, filename)
         if suffix == ".pdf":
-            return PDFParser.parse_bytes(data, filename)
+            return PDFParser.parse_bytes(data, filename, enable_ocr=enable_pdf_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
         if suffix == ".tex":
             return LatexParser.parse_bytes(data, filename)
         if suffix in (".txt", ".text"):
@@ -305,10 +305,10 @@ class PDFParser:
         )
     
     @staticmethod
-    def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
+    def parse_bytes(data: bytes, filename: str, *, enable_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(stream=data, filetype="pdf")
-            return PDFParser._extract_paragraphs(doc, filename)
+            return PDFParser._extract_paragraphs(doc, filename, enable_ocr=enable_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
         if PYPDF_AVAILABLE:
             reader = PypdfReader(io.BytesIO(data))
             return PDFParser._extract_with_pypdf(reader, filename)
@@ -345,6 +345,22 @@ class PDFParser:
         }
 
     @staticmethod
+    def _ocr_page(page: Any, *, language: str = "eng", dpi: int = 200) -> str:
+        """Run optional local Tesseract OCR for one sparse PDF page."""
+        try:
+            import pytesseract  # type: ignore[import-not-found]
+            from PIL import Image  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise ImportError("Install the optional OCR dependencies from requirements-ocr.txt and the Tesseract system binary.") from exc
+        scale = max(1.0, min(float(dpi), 400.0) / 72.0)
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+        image = Image.open(io.BytesIO(pixmap.tobytes("png")))
+        try:
+            return pytesseract.image_to_string(image, lang=language)
+        except Exception as exc:
+            raise RuntimeError(f"Tesseract OCR could not process the page: {exc}") from exc
+
+    @staticmethod
     def _extract_with_pypdf(reader: "PypdfReader", filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         page_texts: List[str] = []
@@ -377,14 +393,39 @@ class PDFParser:
         )
     
     @staticmethod
-    def _extract_paragraphs(doc: "fitz.Document", filename: str) -> ParsedDocument:
+    def _extract_paragraphs(doc: "fitz.Document", filename: str, *, enable_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         page_texts: List[str] = []
         counter = 0
+        ocr_pages: List[int] = []
+        ocr_unavailable_pages: List[int] = []
+        ocr_dependency_error: str | None = None
         
         for page_num, page in enumerate(doc):
-            page_texts.append(page.get_text("text") or "")
+            page_text = page.get_text("text") or ""
+            if enable_ocr and len(page_text.strip()) < 40:
+                try:
+                    ocr_text = PDFParser._ocr_page(page, language=ocr_language, dpi=ocr_dpi)
+                    if ocr_text.strip():
+                        page_text = ocr_text
+                        ocr_pages.append(page_num + 1)
+                except (ImportError, RuntimeError) as exc:
+                    ocr_dependency_error = str(exc)
+                    ocr_unavailable_pages.append(page_num + 1)
+            page_texts.append(page_text)
             blocks = page.get_text("blocks")
+            if enable_ocr and len((page.get_text("text") or "").strip()) < 40 and page_num + 1 in ocr_pages:
+                blocks = []
+                for block_text in re.split(r"\n\s*\n", page_text):
+                    block_text = block_text.strip()
+                    if block_text:
+                        counter += 1
+                        para_type = "heading" if HEADER_RE.match(block_text) else "reference" if REFERENCE_RE.match(block_text) else "body"
+                        paragraphs.append(DocumentParagraph(
+                            id=f"page_{page_num+1}_ocr_block_{counter}", text=block_text,
+                            paragraph_type=para_type, location=f"page.{page_num+1}.ocr_block.{counter}",
+                            metadata={"page": page_num + 1, "ocr": True},
+                        ))
             for block in blocks:
                 if block[6] == 0:  # Text block
                     text = block[4].strip()
@@ -409,7 +450,12 @@ class PDFParser:
             filename=filename,
             file_type="pdf",
             paragraphs=paragraphs,
-            metadata=PDFParser._quality_metadata(page_texts, "pymupdf")
+            metadata={**PDFParser._quality_metadata(page_texts, "pymupdf"),
+                      "ocr_enabled": enable_ocr, "ocr_pages": ocr_pages,
+                      "ocr_unavailable_pages": ocr_unavailable_pages,
+                      "ocr_language": ocr_language if enable_ocr else None,
+                      "ocr_dpi": ocr_dpi if enable_ocr else None,
+                      "ocr_warning": (f"Local OCR was requested but unavailable: {ocr_dependency_error}" if ocr_dependency_error else None)}
         )
 
 
