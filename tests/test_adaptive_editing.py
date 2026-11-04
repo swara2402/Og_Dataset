@@ -96,7 +96,7 @@ def test_latest_og_dataset_rules_policy_examples_and_profile_load():
     dataset = load_dataset()
     identifiers = {rule["id"] for rule in load_quality_rules()}
     assert dataset["version"] == "1.1.0"
-    assert {"GRAMMAR-001", "WORDCHOICE-001", "EVIDENCE-001"} <= identifiers
+    assert {"GRAMMAR-001", "WORDCHOICE-001", "EVIDENCE-001", "WORDINESS-001"} <= identifiers
     assert len(dataset["examples"]) == 8
     assert {"OEI-001", "OEI-002", "OEI-003"} <= {
         example["example_id"] for example in dataset["examples"]
@@ -135,3 +135,44 @@ def test_repeated_vocabulary_is_flagged_but_not_automatically_replaced():
     assert "repeated_vocabulary" in profile["issues"]
     assert result["revised_text"] == text
     assert result["requires_human_review"] is True
+
+
+
+def test_wordiness_rules_make_only_narrow_semantics_preserving_edits():
+    engine = HumanisationEngine(Settings())
+    original = (
+        "In order to evaluate the model, we collected results. "
+        "At this point in time, the results were reviewed."
+    )
+    profile = assess_editing_needs(original)
+    assert "wordy_phrase" in profile["issues"]
+    result = engine._apply_rules_to_text(original, profile, paragraph_type="body")
+    assert result["revised_text"] == (
+        "To evaluate the model, we collected results. "
+        "Now, the results were reviewed."
+    )
+    assert result["applied_rule_ids"] == ["WORDINESS-001"]
+    assert result["edit_scope"] == "phrase"
+    assert result["requires_human_review"] is True
+
+
+def test_wordiness_rules_do_not_edit_quoted_phrases():
+    from backend.app.protected_content.masker import ProtectedContentMasker
+
+    engine = HumanisationEngine(Settings())
+    original = 'The author wrote "in order to improve" in the source.'
+    masked, replacements, spans = ProtectedContentMasker().mask(original)
+    profile = assess_editing_needs(masked)
+    result = engine._apply_rules_to_text(masked, profile, paragraph_type="body")
+    assert result["revised_text"] == masked
+    assert "WORDINESS-001" not in result["applied_rule_ids"]
+
+
+def test_validator_rejects_reordered_protected_placeholders():
+    from backend.app.validation.validator import validate_rewrite
+
+    original = "A __TURNITOUT_PROTECTED_0000__ then __TURNITOUT_PROTECTED_0001__."
+    reordered = "A __TURNITOUT_PROTECTED_0001__ then __TURNITOUT_PROTECTED_0000__."
+    result = validate_rewrite(original, reordered, original, reordered, [])
+    assert result["valid"] is False
+    assert result["checks"]["protected_placeholders"] is False
