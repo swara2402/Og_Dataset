@@ -12,8 +12,8 @@ def test_configured_tokens_require_authentication_and_isolate_jobs():
     previous_required = settings.api_auth_required
     settings.api_tokens = json.dumps({"alice": "alice-test-secret-012345678901234567890123456789", "bob": "bob-test-secret-012345678901234567890123456789"})
     settings.api_auth_required = True
-    alice = {"Authorization": "Bearer alice-test-secret"}
-    bob = {"Authorization": "Bearer bob-test-secret"}
+    alice = {"Authorization": "Bearer alice-test-secret-012345678901234567890123456789"}
+    bob = {"Authorization": "Bearer bob-test-secret-012345678901234567890123456789"}
 
     try:
         with TestClient(app) as client:
