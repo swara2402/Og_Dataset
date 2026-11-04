@@ -488,3 +488,54 @@ def test_docx_text_replacement_preserves_inline_run_formatting():
     assert paragraph.runs[1].bold is True
     assert paragraph.runs[2].text == " word"
     assert paragraph.runs[2].italic is True
+
+
+
+def test_docx_export_round_trip_preserves_inline_run_formatting(tmp_path):
+    document = DocxDocument()
+    paragraph = document.add_paragraph()
+    paragraph.add_run("A ")
+    bold_run = paragraph.add_run("bold")
+    bold_run.bold = True
+    italic_run = paragraph.add_run(" word")
+    italic_run.italic = True
+    source = io.BytesIO()
+    document.save(source)
+
+    parsed = DocumentParser.parse_bytes(source.getvalue(), "formatted.docx")
+    item = parsed.paragraphs[0]
+    job = Job(
+        job_id="docx-formatting-roundtrip",
+        filename=parsed.filename,
+        file_type="docx",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        style="academic",
+        options={},
+        document=parsed,
+        paragraphs=[
+            ParagraphState(
+                id=item.id,
+                index=0,
+                original_text=item.text,
+                current_text="A bolded word",
+                paragraph_type=item.paragraph_type,
+                category="ordinary_prose",
+                section=None,
+                eligible=True,
+                masked_text=item.text,
+                review_status="accepted",
+            )
+        ],
+        original_bytes=source.getvalue(),
+    )
+
+    output = export_document(job, "docx", str(tmp_path))
+    exported = DocxDocument(output)
+    runs = exported.paragraphs[0].runs
+    assert exported.paragraphs[0].text == "A bolded word"
+    assert runs[0].text == "A "
+    assert runs[1].text == "bolded"
+    assert runs[1].bold is True
+    assert runs[2].text == " word"
+    assert runs[2].italic is True
