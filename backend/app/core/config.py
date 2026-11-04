@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     ollama_num_ctx: int = 8192
 
     # Originality / source matching (explicit user action only)
-    enable_web_originality: bool = True
+    enable_web_originality: bool = False
     web_timeout: float = 12.0
     web_max_queries: int = 6
     web_pages_per_query: int = 2
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         "http://localhost:5173,http://127.0.0.1:5173,"
         "http://localhost:4173,http://127.0.0.1:4173"
     )
-    debug: bool = True
+    debug: bool = False
 
     @property
     def cors_origin_list(self) -> List[str]:
