@@ -181,3 +181,20 @@ def test_originality_request_rejects_oversized_inputs():
         )
         assert too_much_text.status_code == 422
         assert too_many_paragraphs.status_code == 422
+
+
+def test_token_parser_rejects_duplicate_json_user_keys_and_oversized_config():
+    import pytest
+    from backend.app.api.auth import resolve_owner
+
+    token = "user-secret-012345678901234567890123456789"
+    duplicate_keys = '{"alice":"' + token + '","alice":"' + token + 'x"}'
+    with pytest.raises(ValueError, match="duplicate user IDs"):
+        resolve_owner("Bearer " + token, duplicate_keys, True)
+
+    too_many_users = json.dumps({
+        "user-" + str(index): ("secret-" + str(index) + "-" + "x" * 40)
+        for index in range(501)
+    })
+    with pytest.raises(ValueError, match="500 users"):
+        resolve_owner("Bearer " + token, too_many_users, True)
