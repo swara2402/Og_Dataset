@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.router import api_router, health as api_health, set_global_services
 from backend.app.core.config import settings
 from backend.app.core.jobs import job_store
-from backend.app.api.auth import current_owner_id, resolve_owner
+from backend.app.api.auth import current_owner_id, is_rate_limited, resolve_owner
 from backend.app.humanisation.engine import HumanisationEngine
 
 logging.basicConfig(
@@ -73,6 +73,15 @@ async def authenticate_api_request(request: Request, call_next):
             status_code=401,
             content={"detail": "A valid bearer token is required."},
             headers={"WWW-Authenticate": "Bearer"},
+        )
+    client_host = request.client.host if request.client else "unknown"
+    rate_key = f"{owner_id}:{client_host}"
+    limit = max(1, int(settings.api_rate_limit_per_minute))
+    if is_rate_limited(rate_key, limit):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded. Please retry shortly."},
+            headers={"Retry-After": "60"},
         )
     token = current_owner_id.set(owner_id)
     try:
