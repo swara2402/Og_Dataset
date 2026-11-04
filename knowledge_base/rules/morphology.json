@@ -1,0 +1,26 @@
+{
+  "version": "1.1.0",
+  "rule_set": "morphology",
+  "rules": [
+    {
+      "id": "MORPHOLOGY-AGREEMENT-001",
+      "category": "morphology",
+      "name": "Check finite-verb agreement using local morphology",
+      "guidance": "When optional spaCy parsing supplies one unambiguous nominal subject and a finite verb with conflicting number morphology, offer a conservative inflection candidate for human review.",
+      "apply_when": [
+        "A local parser identifies exactly one non-pronominal subject with explicit grammatical number.",
+        "The finite verb form is a supported present-tense or be-past form."
+      ],
+      "do_not_apply_when": [
+        "The subject is pronominal, coordinated, ambiguous, or lacks explicit number morphology.",
+        "The verb form is unsupported or parser confidence is insufficient.",
+        "The edit changes tense, modality, negation, or a protected technical expression."
+      ],
+      "preservation": [
+        "Never generate text or apply this proposal automatically.",
+        "Keep tense, aspect, negation, modality, citations, quantities, and technical terms unchanged.",
+        "Require human review before accepting the proposal."
+      ]
+    }
+  ]
+}
