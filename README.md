@@ -68,7 +68,6 @@ Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 
 ```bash
 python3 -m pytest -q
-python3 -m pytest -q
 ```
 
 The tests use local fixtures and do not call Ollama or the public web.

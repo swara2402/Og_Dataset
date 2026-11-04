@@ -48,6 +48,5 @@ scores.
 Run the dataset validator and backend regression suite:
 
 ```bash
-python3 Og_Dataset/scripts/validate_dataset.py Og_Dataset/datasets/examples.jsonl
 python3 -m pytest -q
 ```
