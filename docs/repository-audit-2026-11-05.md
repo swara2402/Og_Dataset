@@ -210,3 +210,13 @@ The punctuation rule previously inserted a space after every period immediately 
 
 Latest verified code snapshot: `d02b18489d57f3bedecf7291605585c0953f1177`.
 CI run `41910285189`: **122 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
+
+
+## Corpus ingestion hardening
+
+- Added a JSON Schema contract for each corpus source manifest record and made CI validate the manifest without reading source files.
+- Non-synthetic sources now require an allowed licence, explicit text-mining permission, a source URL, a separate licence-evidence URL and attribution.
+- Local source ingestion rejects symlinks and enforces a configurable per-file size limit (50 MB default, 1–500 MB allowed).
+- Added tests for malformed metadata, missing licence evidence, path traversal, symlinks, size limits and validation-only mode.
+- Latest verified code snapshot: `8bbafcf92ced41571cbf6d58ede3253df42a012d`.
+- CI run `41911369124`: **129 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
