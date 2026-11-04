@@ -51,6 +51,21 @@ def test_sentence_spacing_preserves_common_abbreviations_and_decimals():
     assert "e. g." not in result["revised_text"]
 
 
+def test_punctuation_assessment_ignores_valid_abbreviations_and_initialisms():
+    clean = assess_editing_needs(
+        "For example, e.g. this method uses 3.14 and i.e. the results remain stable."
+    )
+    assert "punctuation_spacing" not in clean["issues"]
+
+    initialism = "The U.S.A. team reports 3.14 results."
+    profile = assess_editing_needs(initialism)
+    assert "punctuation_spacing" not in profile["issues"]
+    result = HumanisationEngine(Settings())._apply_rules_to_text(
+        initialism, profile, paragraph_type="body"
+    )
+    assert result["revised_text"] == initialism
+
+
 def test_non_function_word_repetition_is_flagged_not_replaced():
     engine = HumanisationEngine(Settings())
     original = "The model model processes input."
