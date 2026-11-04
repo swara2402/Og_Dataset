@@ -102,6 +102,8 @@ def validate_rewrite(
             issues.append(f"Protected placeholders missing: {', '.join(sorted(set(missing)))}")
         if added:
             issues.append(f"Unknown or duplicated placeholders: {', '.join(sorted(set(added)))}")
+        if not missing and not added:
+            issues.append("Protected placeholders were reordered.")
         critical = True
 
     protected_ok = True
