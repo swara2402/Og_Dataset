@@ -5,13 +5,13 @@
   "additionalProperties": false,
   "required": ["pair_id", "discipline", "section", "original_text", "edited_text", "edit_types", "rationale", "meaning_preserved", "review_status", "source"],
   "properties": {
-    "pair_id": {"type": "string", "minLength": 1},
+    "pair_id": {"type": "string", "minLength": 1, "maxLength": 120},
     "discipline": {"type": "string", "minLength": 1},
     "section": {"enum": ["abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion", "other"]},
-    "original_text": {"type": "string", "minLength": 1},
-    "edited_text": {"type": "string", "minLength": 1},
-    "edit_types": {"type": "array", "uniqueItems": true, "items": {"enum": ["grammar", "clarity", "precision", "coherence", "concision", "terminology", "punctuation", "formatting"]}},
-    "rationale": {"type": "string", "minLength": 1},
+    "original_text": {"type": "string", "minLength": 1, "maxLength": 20000},
+    "edited_text": {"type": "string", "minLength": 1, "maxLength": 20000},
+    "edit_types": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["grammar", "clarity", "precision", "coherence", "concision", "terminology", "punctuation", "formatting"]}},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 3000},
     "protected_claims": {"type": "array", "items": {"type": "string"}},
     "meaning_preserved": {"type": "boolean"},
     "review_status": {"enum": ["draft", "pending_review", "human_approved", "rejected"]},
@@ -28,10 +28,8 @@
       }
     }
   },
-  "allOf": [
-    {
-      "if": {"properties": {"review_status": {"const": "human_approved"}}},
-      "then": {"properties": {"meaning_preserved": {"const": true}}}
-    }
-  ]
+  "allOf": [{
+    "if": {"properties": {"review_status": {"const": "human_approved"}}},
+    "then": {"properties": {"meaning_preserved": {"const": true}, "reviewer_id": {"type": "string", "minLength": 1}}}
+  }]
 }
