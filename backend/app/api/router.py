@@ -405,6 +405,7 @@ async def cancel_processing(job_id: str) -> CancelResponse:
         job.task.cancel()
     job.status = "cancelled"
     job.progress["phase"] = "cancelled"
+    job_store.save(job)
     return CancelResponse(job_id=job_id, cancelled=True, message="Processing cancellation requested.")
 
 
@@ -440,6 +441,7 @@ async def refine_paragraph(job_id: str, request: RefineRequest) -> Dict[str, Any
     job.writing_quality = None
     job.ai_indicators = None
     job.originality = None
+    job_store.save(job)
     return {
         "job_id": job.job_id,
         "paragraph": state.to_dict(),
@@ -481,6 +483,7 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
     job.writing_quality = None
     job.ai_indicators = None
     job.originality = None
+    job_store.save(job)
     return {
         "job_id": job.job_id,
         "paragraph": state.to_dict(),
