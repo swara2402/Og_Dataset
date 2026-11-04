@@ -324,7 +324,7 @@ interface APIContextType {
     maxSentences?: number;
     fetchPages?: boolean;
   }) => Promise<OriginalityReport | null>;
-  exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf') => Promise<Blob | null>;
+  exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => Promise<Blob | null>;
   listJobs: () => Promise<JobSummary[]>;
   errorMessage: (error: unknown) => string;
   isConnected: boolean;
