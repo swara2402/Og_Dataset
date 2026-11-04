@@ -29,6 +29,13 @@ export interface HealthStatus {
   };
 }
 
+export interface EngineStatus {
+  deterministic_rules: { available: boolean; enabled: boolean };
+  spacy: { provider: string; available: boolean; enabled: boolean; model: string; error: string | null };
+  ollama: { provider: string; enabled: boolean; configured: boolean; model: string | null; base_url: string; network_checked: boolean };
+  offline_basic_available: boolean;
+}
+
 export interface AppSettings {
   engine_type: string;
   engine_status: string;
@@ -296,6 +303,7 @@ export interface ReviewResponse {
 interface APIContextType {
   healthCheck: () => Promise<HealthStatus | null>;
   getSettings: () => Promise<AppSettings | null>;
+  getEngineStatus: () => Promise<EngineStatus | null>;
   updateSettings: (update: Partial<AppSettings>) => Promise<AppSettings | null>;
   clearCache: () => Promise<boolean>;
   uploadDocument: (
@@ -368,6 +376,15 @@ export function APIProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
+
+  const getEngineStatus = useCallback(async (): Promise<EngineStatus | null> => {
+    try {
+      const response = await api.get<EngineStatus>('/engines/status');
+      return response.data;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const getSettings = useCallback(async (): Promise<AppSettings | null> => {
     try {
@@ -539,7 +556,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
   );
 
   const exportDocument = useCallback(
-    async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf'): Promise<Blob | null> => {
+    async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex'): Promise<Blob | null> => {
       try {
         const response = await api.post(`/export/${jobId}?format=${format}`, null, {
           responseType: 'blob',
@@ -566,6 +583,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
   const value: APIContextType = {
     healthCheck,
     getSettings,
+    getEngineStatus,
     updateSettings,
     clearCache,
     uploadDocument,
