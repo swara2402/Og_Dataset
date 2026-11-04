@@ -127,6 +127,8 @@ def load_terminology() -> List[Dict[str, Any]]:
     validator = Draft202012Validator(schema)
     entries: List[Dict[str, Any]] = []
     seen_ids: set[str] = set()
+    seen_terms: set[tuple[str, str]] = set()
+    allowed_licenses = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
     with path.open(encoding="utf-8") as stream:
         for line_number, line in enumerate(stream, 1):
             if not line.strip():
@@ -143,6 +145,18 @@ def load_terminology() -> List[Dict[str, Any]]:
             if item["term_id"] in seen_ids:
                 raise RuntimeError(f"Duplicate terminology ID: {item['term_id']}")
             seen_ids.add(item["term_id"])
+            source = item["source"]
+            if source["kind"] == "synthetic":
+                if source["license"] != "SYNTHETIC":
+                    raise RuntimeError(f"Terminology entry {item['term_id']} has invalid synthetic provenance.")
+            elif source["license"] not in allowed_licenses:
+                raise RuntimeError(f"Terminology entry {item['term_id']} has an unapproved licence.")
+            normalized_term = re.sub(r"[^a-z0-9]+", " ", item["term"].casefold()).strip()
+            for discipline in item["disciplines"]:
+                key = (discipline.casefold(), normalized_term)
+                if key in seen_terms:
+                    raise RuntimeError(f"Duplicate terminology term for discipline: {item['term']}")
+                seen_terms.add(key)
             if item["review_status"] == "reviewed":
                 entries.append(item)
     return entries
