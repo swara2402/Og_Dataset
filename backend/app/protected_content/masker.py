@@ -132,7 +132,12 @@ class ProtectedContentMasker:
             span for span in self._collect_regex_spans(text) if span[3] in MASKED_TYPES
         ]
         entity_spans = self._collect_spacy_entities(text)
-        all_spans = regex_spans + entity_spans
+        # Mask user text that resembles an internal token to avoid collisions.
+        literal_placeholder_spans = [
+            (match.start(), match.end(), match.group(0), "literal_placeholder")
+            for match in PLACEHOLDER_RE.finditer(text)
+        ]
+        all_spans = regex_spans + entity_spans + literal_placeholder_spans
         
         # Merge and create protected spans
         protected_spans = self._merge_spans(text, all_spans)
