@@ -29,7 +29,6 @@ from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
 
 from backend.app.protected_content.masker import ProtectedContentMasker
-from backend.app.quality_analysis.ai_indicators import analyze_ai_indicators
 from backend.app.quality_analysis.analyzer import compare_texts
 
 logger = logging.getLogger(__name__)
@@ -462,7 +461,6 @@ async def refine_paragraph(job_id: str, request: RefineRequest) -> Dict[str, Any
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     job.writing_quality = None
-    job.ai_indicators = None
     job_store.save(job)
     return {
         "job_id": job.job_id,
@@ -652,7 +650,6 @@ def _validation_summary(job: Job) -> Dict[str, Any]:
 
 def _build_analysis(job: Job) -> Dict[str, Any]:
     quality = compare_texts(_combined_text(job, False), _combined_text(job, True))
-    ai_report = analyze_ai_indicators(_combined_text(job, True))
     return {
         "job_id": job.job_id,
         "filename": job.filename,
@@ -660,11 +657,9 @@ def _build_analysis(job: Job) -> Dict[str, Any]:
         "status": job.status,
         "statistics": job.statistics,
         "writing_quality": quality,
-        "ai_indicators": ai_report,
         "validation": _validation_summary(job),
         "disclaimer": (
-            "Writing-quality and style indicators are local heuristics, not a verified "
-            "AI-detector result or a measure of authorship."
+            "Writing-quality metrics are descriptive heuristics, not proof of academic quality or authorship."
         ),
     }
 
@@ -674,7 +669,6 @@ async def analysis_report(job_id: str) -> Dict[str, Any]:
     job = _get_job(job_id)
     report = _build_analysis(job)
     job.writing_quality = report["writing_quality"]
-    job.ai_indicators = report["ai_indicators"]
     return report
 
 
@@ -688,13 +682,6 @@ async def writing_quality(job_id: str, request: AnalysisRequest) -> Dict[str, An
     return result
 
 
-@api_router.post("/analysis/{job_id}/ai-indicators")
-async def ai_indicators(job_id: str, request: AnalysisRequest) -> Dict[str, Any]:
-    job = _get_job(job_id)
-    text = request.text if request.text else _combined_text(job, True)
-    result = analyze_ai_indicators(text)
-    job.ai_indicators = result
-    return result
 
 
 # --------------------------------------------------------------------- export
