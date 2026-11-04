@@ -12,7 +12,8 @@ from prepare_corpus import load_manifest, main  # noqa: E402
 def test_manifest_rejects_unapproved_licence(tmp_path):
     manifest = tmp_path / "sources.jsonl"
     manifest.write_text(json.dumps({
-        "source_id": "P1", "title": "Paper", "url": "https://example.test",
+        "source_id": "P1", "title": "Paper", "url": "https://example.test/paper",
+        "license_evidence": "https://example.test/license", "attribution": "Example authors",
         "license": "UNKNOWN", "text_mining_permitted": True,
         "discipline": "computer_science", "sections": ["abstract"],
         "local_text": "paper.txt"
@@ -28,7 +29,8 @@ def test_manifest_rejects_unapproved_licence(tmp_path):
 def test_manifest_rejects_path_traversal(tmp_path):
     manifest = tmp_path / "sources.jsonl"
     manifest.write_text(json.dumps({
-        "source_id": "P1", "title": "Paper", "url": None,
+        "source_id": "P1", "title": "Paper", "url": "https://example.test/paper",
+        "license_evidence": "https://example.test/license", "attribution": "Example authors",
         "license": "CC-BY-4.0", "text_mining_permitted": True,
         "discipline": "computer_science", "sections": ["abstract"],
         "local_text": "../paper.txt"
