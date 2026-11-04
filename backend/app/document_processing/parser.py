@@ -318,11 +318,40 @@ class PDFParser:
         )
     
     @staticmethod
+    def _quality_metadata(page_texts: List[str], extractor: str) -> Dict[str, Any]:
+        lengths = [len(text.strip()) for text in page_texts]
+        empty_pages = [index + 1 for index, length in enumerate(lengths) if length == 0]
+        sparse_pages = [index + 1 for index, length in enumerate(lengths) if 0 < length < 40]
+        warnings: List[str] = []
+        if empty_pages:
+            warnings.append(
+                "No selectable text was extracted from page(s) "
+                + ", ".join(map(str, empty_pages))
+                + ". These pages may be scanned images; OCR may be required."
+            )
+        if sparse_pages:
+            warnings.append(
+                "Very little text was extracted from page(s) "
+                + ", ".join(map(str, sparse_pages))
+                + ". Check these pages for image-based content, unusual encoding or extraction loss."
+            )
+        return {
+            "page_count": len(page_texts),
+            "extractor": extractor,
+            "text_characters": sum(lengths),
+            "pages_with_no_text": empty_pages,
+            "pages_with_little_text": sparse_pages,
+            "extraction_warnings": warnings,
+        }
+
+    @staticmethod
     def _extract_with_pypdf(reader: "PypdfReader", filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
+        page_texts: List[str] = []
         counter = 0
         for page_num, page in enumerate(reader.pages):
             text = page.extract_text() or ""
+            page_texts.append(text)
             for block in re.split(r"\n\s*\n", text):
                 block = block.strip()
                 if not block:
@@ -344,15 +373,17 @@ class PDFParser:
             filename=filename,
             file_type="pdf",
             paragraphs=paragraphs,
-            metadata={"page_count": len(reader.pages), "extractor": "pypdf"},
+            metadata=PDFParser._quality_metadata(page_texts, "pypdf"),
         )
     
     @staticmethod
     def _extract_paragraphs(doc: "fitz.Document", filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
+        page_texts: List[str] = []
         counter = 0
         
         for page_num, page in enumerate(doc):
+            page_texts.append(page.get_text("text") or "")
             blocks = page.get_text("blocks")
             for block in blocks:
                 if block[6] == 0:  # Text block
@@ -378,7 +409,7 @@ class PDFParser:
             filename=filename,
             file_type="pdf",
             paragraphs=paragraphs,
-            metadata={"page_count": len(doc)}
+            metadata=PDFParser._quality_metadata(page_texts, "pymupdf")
         )
 
 
