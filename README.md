@@ -64,6 +64,16 @@ npm run dev -- --host 127.0.0.1
 Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 <http://127.0.0.1:8000/docs>.
 
+## Hosted deployment
+
+For a separately hosted static frontend and API, set the frontend build variable
+`VITE_API_BASE_URL` to the backend API base URL, including `/api/v1` (for
+example, `https://your-api.example.com/api/v1`). Set the backend
+`CORS_ORIGINS` environment variable to the exact frontend origin, without a
+path. The default relative API path is intended for same-origin deployments and
+local Vite development; it will not automatically route a Cloudflare Pages
+request to a separately hosted API.
+
 ## Tests
 
 ```bash
