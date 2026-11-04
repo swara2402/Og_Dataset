@@ -175,6 +175,33 @@ def _markdown_text(job: Job) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _latex_text(job: Job) -> str:
+    """Splice accepted prose edits into the original TeX source by exact offsets."""
+    if job.file_type != "tex" or not job.original_bytes:
+        raise ValueError("LaTeX export requires the original .tex source file.")
+    source = job.original_bytes.decode("utf-8-sig")
+    if len(job.document.paragraphs) != len(job.paragraphs):
+        raise ValueError("LaTeX paragraph mapping is incomplete; source was not modified.")
+
+    edits: list[tuple[int, int, str]] = []
+    for item, state in zip(job.document.paragraphs, job.paragraphs):
+        if state.review_status != "accepted" or state.current_text == state.original_text:
+            continue
+        start = item.metadata.get("source_start")
+        end = item.metadata.get("source_end")
+        if not isinstance(start, int) or not isinstance(end, int) or not (0 <= start <= end <= len(source)):
+            raise ValueError("LaTeX source offsets are invalid; source was not modified.")
+        if source[start:end] != state.original_text:
+            raise ValueError("LaTeX source no longer matches parsed paragraph offsets.")
+        if state.paragraph_type != "body":
+            raise ValueError("Only prose blocks can be exported as LaTeX edits.")
+        edits.append((start, end, state.current_text))
+
+    for start, end, replacement in sorted(edits, reverse=True):
+        source = source[:start] + replacement + source[end:]
+    return source
+
+
 def _pdf_bytes(job: Job) -> bytes:
     if not REPORTLAB_AVAILABLE:
         raise ValueError("PDF export requires reportlab to be installed.")
@@ -224,6 +251,8 @@ def export_document(job: Job, fmt: str, output_dir: str) -> Path:
         output = output.with_suffix(".md")
     elif fmt == "pdf":
         data = _pdf_bytes(job)
+    elif fmt == "tex":
+        data = _latex_text(job).encode("utf-8")
     else:
         raise ValueError(f"Unsupported export format: {fmt}")
 
@@ -244,6 +273,11 @@ def export_notes(job: Job, fmt: str) -> List[str]:
         )
         if not job.original_bytes:
             notes.append("Original DOCX is unavailable; a plain DOCX was generated instead.")
+    if fmt.lstrip(".").lower() == "tex":
+        notes.append(
+            "LaTeX export splices accepted prose edits into the original source by exact offsets. "
+            "Commands, citations, math, code environments, headings and bibliography blocks are preserved."
+        )
     if fmt.lstrip(".").lower() == "pdf":
         notes.append(
             "PDF export is a simple text-preserving render. Use DOCX for the highest "
