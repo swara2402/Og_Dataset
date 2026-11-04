@@ -66,7 +66,9 @@ def load_manifest(path: Path) -> list[dict]:
             raise ValueError(f"Manifest line {line_no}: missing {sorted(required - item.keys())}")
         schema_errors = sorted(validator.iter_errors(item), key=lambda error: list(error.absolute_path))
         if schema_errors:
-            raise ValueError(f"Manifest line {line_no}: {schema_errors[0].message}")
+            field = ".".join(str(part) for part in schema_errors[0].absolute_path)
+            label = "local_text filename" if field == "local_text" else field or "record"
+            raise ValueError(f"Manifest line {line_no} ({label}): {schema_errors[0].message}")
         sid = item["source_id"]
         if not isinstance(sid, str) or not sid or sid in seen:
             raise ValueError(f"Manifest line {line_no}: source_id must be unique and non-empty")
