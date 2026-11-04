@@ -43,7 +43,7 @@ def load_entries(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"Line {line_number}: synthetic records must use SYNTHETIC provenance")
         elif source["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"Line {line_number}: licence is not on the reviewed allowlist")
-        normalized = re.sub(r"\\s+", " ", item["term"]).strip().casefold()
+        normalized = re.sub(r"\s+", " ", item["term"]).strip().casefold()
         for discipline in item["disciplines"]:
             key = (discipline.casefold(), normalized)
             if key in terms:
