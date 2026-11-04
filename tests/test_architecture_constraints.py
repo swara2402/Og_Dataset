@@ -30,3 +30,14 @@ def test_paragraph_analysis_contract_exposes_only_deterministic_and_optional_spa
     fields = ParagraphAnalysisRequest.model_fields
     assert "include_nlp" in fields
     assert "include_local_llm" not in fields
+
+def test_public_web_originality_is_absent_from_offline_core():
+    from backend.app.api.router import api_router
+
+    paths = {route.path for route in api_router.routes}
+    assert "/originality/check" not in paths
+    assert "enable_web_originality" not in Settings.model_fields
+    assert not (ROOT / "backend/app/originality").exists()
+    frontend_api = (ROOT / "frontend/src/contexts/APIContext.tsx").read_text(encoding="utf-8")
+    assert "runOriginality" not in frontend_api
+    assert "/originality/check" not in frontend_api
