@@ -142,7 +142,7 @@ Human-edited examples use the separate
 licences, duplicate pairs, missing reviewer identity, and approved pairs without
 an explicit meaning-preserved decision. Draft and synthetic examples remain
 reference material; they are never promoted automatically. CI validates this
-file on every push. See
+file on every push. The terminology inventory lives in `knowledge_base/datasets/terminology.jsonl`, follows `knowledge_base/schemas/terminology.schema.json`, and is checked with `python scripts/validate_terminology.py`. It records discipline-specific definitions, contexts, preferred forms, and substitutions to avoid; only reviewed records can be exported as a trusted inventory. See
 [`knowledge_base/corpus/README.md`](./knowledge_base/corpus/README.md) for
 the manifest format, supported licence identifiers, and workflow.
 
