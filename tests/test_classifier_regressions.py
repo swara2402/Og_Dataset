@@ -27,7 +27,7 @@ def test_multiword_literature_indicators_are_counted_as_phrases():
     result = ParagraphClassifier().classify(
         paragraph(
             "literature",
-            "According to prior studies, this approach was evaluated across datasets.",
+            "According to prior studies, this approach was examined across several reports.",
         )
     )
     assert result.primary_category == "literature_review"
