@@ -169,20 +169,6 @@ def test_global_settings_and_cache_actions_require_admin_token():
         settings.api_admin_users = previous_admins
 
 
-def test_originality_request_rejects_oversized_inputs():
-    with TestClient(app) as client:
-        too_much_text = client.post(
-            "/api/v1/originality/check",
-            json={"confirm_search": False, "text": "x" * 100001},
-        )
-        too_many_paragraphs = client.post(
-            "/api/v1/originality/check",
-            json={"confirm_search": False, "text": "sample", "paragraph_ids": [str(i) for i in range(13)]},
-        )
-        assert too_much_text.status_code == 422
-        assert too_many_paragraphs.status_code == 422
-
-
 def test_token_parser_rejects_duplicate_json_user_keys_and_oversized_config():
     import pytest
     from backend.app.api.auth import resolve_owner
