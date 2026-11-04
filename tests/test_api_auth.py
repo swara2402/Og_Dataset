@@ -70,3 +70,37 @@ def test_auth_required_without_token_configuration_fails_closed():
     finally:
         settings.api_tokens = previous_tokens
         settings.api_auth_required = previous_required
+
+
+def test_in_process_rate_limiter_enforces_budget_and_can_reset():
+    from backend.app.api.auth import is_rate_limited, reset_rate_limits
+    reset_rate_limits()
+    try:
+        assert is_rate_limited("owner:127.0.0.1", 1) is False
+        assert is_rate_limited("owner:127.0.0.1", 1) is True
+        assert is_rate_limited("another-owner:127.0.0.1", 1) is False
+    finally:
+        reset_rate_limits()
+
+
+def test_api_middleware_returns_429_when_request_budget_is_exhausted():
+    from backend.app.api.auth import reset_rate_limits
+    previous_limit = settings.api_rate_limit_per_minute
+    previous_tokens = settings.api_tokens
+    previous_required = settings.api_auth_required
+    settings.api_rate_limit_per_minute = 1
+    settings.api_tokens = ""
+    settings.api_auth_required = False
+    reset_rate_limits()
+    try:
+        with TestClient(app) as client:
+            first = client.get("/api/v1/health")
+            second = client.get("/api/v1/health")
+            assert first.status_code == 200
+            assert second.status_code == 429
+            assert second.headers["Retry-After"] == "60"
+    finally:
+        settings.api_rate_limit_per_minute = previous_limit
+        settings.api_tokens = previous_tokens
+        settings.api_auth_required = previous_required
+        reset_rate_limits()
