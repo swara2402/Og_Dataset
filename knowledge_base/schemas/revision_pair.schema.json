@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Human-reviewed academic revision pair",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pair_id", "discipline", "section", "original_text", "edited_text", "edit_types", "rationale", "meaning_preserved", "review_status", "source"],
+  "properties": {
+    "pair_id": {"type": "string", "minLength": 1},
+    "discipline": {"type": "string", "minLength": 1},
+    "section": {"enum": ["abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion", "other"]},
+    "original_text": {"type": "string", "minLength": 1},
+    "edited_text": {"type": "string", "minLength": 1},
+    "edit_types": {"type": "array", "uniqueItems": true, "items": {"enum": ["grammar", "clarity", "precision", "coherence", "concision", "terminology", "punctuation", "formatting"]}},
+    "rationale": {"type": "string", "minLength": 1},
+    "protected_claims": {"type": "array", "items": {"type": "string"}},
+    "meaning_preserved": {"type": "boolean"},
+    "review_status": {"enum": ["draft", "pending_review", "human_approved", "rejected"]},
+    "reviewer_id": {"type": ["string", "null"]},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "reference", "license", "attribution"],
+      "properties": {
+        "kind": {"enum": ["human_revision", "synthetic", "public_dataset"]},
+        "reference": {"type": "string", "minLength": 1},
+        "license": {"type": "string", "minLength": 1},
+        "attribution": {"type": "string"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"review_status": {"const": "human_approved"}}},
+      "then": {"properties": {"meaning_preserved": {"const": true}}}
+    }
+  ]
+}
