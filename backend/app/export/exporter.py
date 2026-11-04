@@ -4,6 +4,10 @@ from __future__ import annotations
 import io
 import re
 import time
+from copy import deepcopy
+from difflib import SequenceMatcher
+
+from docx.oxml.ns import qn
 from pathlib import Path
 from typing import List
 
@@ -40,15 +44,67 @@ def _export_text(state: ParagraphState) -> str:
     return state.original_text
 
 
-def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> None:
-    """Replace paragraph text while keeping paragraph/first-run formatting."""
-    if paragraph.runs:
-        paragraph.runs[0].text = text
-        for run in paragraph.runs[1:]:
-            run.text = ""
-    else:
-        paragraph.add_run(text)
+def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> bool:
+    """Apply an accepted text edit while retaining safe paragraph/run formatting.
 
+    Unusual XML children (hyperlinks, fields, drawings, bookmarks, etc.) are
+    deliberately left untouched rather than risk corrupting document content.
+    """
+    original = paragraph.text
+    if original == text:
+        return True
+
+    children = list(paragraph._p.iterchildren())
+    allowed_tags = {qn("w:pPr"), qn("w:r")}
+    if any(child.tag not in allowed_tags for child in children):
+        return False
+
+    runs = list(paragraph.runs)
+    if not runs:
+        paragraph.add_run(text)
+        return True
+
+    run_text = "".join(run.text for run in runs)
+    if run_text != original:
+        return False
+
+    char_run_indexes: list[int] = []
+    for index, run in enumerate(runs):
+        char_run_indexes.extend([index] * len(run.text))
+
+    matcher = SequenceMatcher(a=original, b=text, autojunk=False)
+    styled_chars: list[tuple[str, int]] = []
+    for operation, old_start, old_end, new_start, new_end in matcher.get_opcodes():
+        if operation == "equal":
+            for offset, char in enumerate(text[new_start:new_end]):
+                styled_chars.append((char, char_run_indexes[old_start + offset]))
+        elif operation in {"replace", "insert"}:
+            if old_start < len(char_run_indexes):
+                source_index = char_run_indexes[old_start]
+            elif char_run_indexes:
+                source_index = char_run_indexes[-1]
+            else:
+                source_index = 0
+            styled_chars.extend((char, source_index) for char in text[new_start:new_end])
+
+    segments: list[tuple[str, int]] = []
+    for char, run_index in styled_chars:
+        if segments and segments[-1][1] == run_index:
+            segments[-1] = (segments[-1][0] + char, run_index)
+        else:
+            segments.append((char, run_index))
+
+    formatting = [
+        deepcopy(run._r.rPr) if run._r.rPr is not None else None
+        for run in runs
+    ]
+    paragraph.clear()
+    for segment, source_index in segments:
+        new_run = paragraph.add_run(segment)
+        source_format = formatting[source_index]
+        if source_format is not None:
+            new_run._r.insert(0, deepcopy(source_format))
+    return True
 
 def _docx_from_states(job: Job) -> bytes:
     """Build a clean DOCX when the original format cannot be edited in place."""
@@ -78,7 +134,9 @@ def _docx_bytes(job: Job) -> bytes:
             continue
         if getattr(item, "paragraph_type", "") == "empty":
             continue
-        _set_paragraph_text(item.original_element, new_text)
+        if not _set_paragraph_text(item.original_element, new_text):
+            # Preserve complex XML exactly rather than flattening unsupported content.
+            continue
     buffer = io.BytesIO()
     document.save(buffer)
     return buffer.getvalue()
@@ -180,9 +238,9 @@ def export_notes(job: Job, fmt: str) -> List[str]:
     ]
     if fmt.lstrip(".").lower() == "docx":
         notes.append(
-            "DOCX export preserves paragraphs, headings, tables and paragraph styles. "
-            "Inline character formatting beyond the first run, complex hyperlinks and "
-            "floating objects may be simplified."
+            "DOCX export preserves paragraph styles and supported run-level formatting. "
+            "Paragraphs containing hyperlinks, fields, drawings, bookmarks or other "
+            "complex inline XML are preserved unchanged rather than rewritten."
         )
         if not job.original_bytes:
             notes.append("Original DOCX is unavailable; a plain DOCX was generated instead.")
