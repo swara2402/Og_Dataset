@@ -19,6 +19,11 @@ from pydantic import BaseModel, Field
 from backend.app.core.config import Settings, settings
 from backend.app.core.jobs import Job, ParagraphState, job_store, now_iso
 from backend.app.document_processing.parser import DocumentParser
+from backend.app.engine.pipeline import HybridAnalysisPipeline
+from backend.app.providers.spacy_provider import SpacyContextProvider
+from backend.app.providers.ollama_adapter import LocalOllamaAdapter
+from backend.app.providers.ollama_suggestion_engine import OllamaSuggestionEngine
+from ollama_provider import OllamaProvider
 from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
@@ -69,6 +74,17 @@ def _get_state(job: Job, paragraph_id: str) -> ParagraphState:
 
 
 # --------------------------------------------------------------------- schemas
+class ParagraphAnalysisRequest(BaseModel):
+    paragraph_id: str = Field(min_length=1, max_length=200)
+    text: str = Field(min_length=1, max_length=50000)
+    paragraph_type: str = "body"
+    category: str = ""
+    document_context: str = Field(default="", max_length=100000)
+    academic_domain: Optional[str] = None
+    include_nlp: bool = False
+    include_local_llm: bool = False
+
+
 class UploadResponse(BaseModel):
     job_id: str
     filename: str
@@ -632,6 +648,69 @@ def _export_response(job_id: str, fmt: str) -> FileResponse:
     }
     headers = {"X-Export-Notes": " | ".join(notes)[:900]} if notes else None
     return FileResponse(path, filename=path.name, media_type=media_types.get(fmt, "application/octet-stream"), headers=headers)
+
+
+@api_router.get("/engines/status")
+async def engine_status() -> Dict[str, Any]:
+    """Report local provider configuration without making network requests."""
+    nlp = SpacyContextProvider(_settings.spacy_model).status()
+    return {
+        "deterministic_rules": {"available": True, "enabled": _settings.rule_engine_enabled},
+        "spacy": {**nlp, "enabled": _settings.spacy_enabled},
+        "ollama": {
+            "provider": "ollama",
+            "enabled": _settings.ollama_enabled,
+            "configured": bool(_settings.ollama_model),
+            "model": _settings.ollama_model or None,
+            "base_url": _settings.ollama_base_url,
+            "network_checked": False,
+        },
+        "offline_basic_available": True,
+    }
+
+
+@api_router.post("/analysis/paragraph")
+async def analyze_paragraph(request: ParagraphAnalysisRequest) -> Dict[str, Any]:
+    """Return proposals and context observations; this endpoint never applies edits."""
+    engine = _require_engine()
+    context_providers = []
+    proposal_engines = []
+
+    if request.include_nlp:
+        if not _settings.spacy_enabled:
+            raise HTTPException(status_code=409, detail="Local spaCy analysis is disabled in server settings.")
+        context_providers.append(SpacyContextProvider(_settings.spacy_model))
+
+    if request.include_local_llm:
+        if not _settings.ollama_enabled or not _settings.ollama_model:
+            raise HTTPException(status_code=409, detail="Local Ollama is not enabled or no model is configured.")
+        provider = OllamaProvider(
+            base_url=_settings.ollama_base_url,
+            api_key=_settings.ollama_api_key or None,
+            timeout=_settings.ollama_timeout,
+            num_ctx=_settings.ollama_num_ctx,
+        )
+        proposal_engines.append(
+            OllamaSuggestionEngine(LocalOllamaAdapter(provider=provider, model=_settings.ollama_model))
+        )
+
+    pipeline = HybridAnalysisPipeline(
+        engine, context_providers=context_providers, proposal_engines=proposal_engines
+    )
+    try:
+        return pipeline.analyze_paragraph(
+            request.paragraph_id,
+            request.text,
+            paragraph_type=request.paragraph_type,
+            category=request.category,
+            document_context=request.document_context or request.text,
+            academic_domain=request.academic_domain,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Paragraph analysis failed")
+        raise HTTPException(status_code=503, detail="Local analysis provider failed.") from exc
 
 
 @api_router.post("/export/{job_id}")
