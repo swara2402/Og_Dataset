@@ -156,7 +156,7 @@ class RuleBasedEditingEngine:
         self.reference_profile = dataset["reference_profile"]
         self.dataset_version = dataset["version"]
         self.rule_by_id = {rule["id"]: rule for rule in self.master_rules}
-        required_rule_ids = {"GRAMMAR-001"}
+        required_rule_ids = {"GRAMMAR-001", "GRAMMAR-002"}
         if not required_rule_ids.issubset(self.rule_by_id):
             raise RuntimeError(
                 "OG Dataset is missing required deterministic rules: "
