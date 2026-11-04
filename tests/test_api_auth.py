@@ -132,3 +132,12 @@ def test_sqlite_job_storage_uses_private_posix_permissions(tmp_path):
     SQLiteJobStore(db_path=str(database))
     assert stat.S_IMODE(database.parent.stat().st_mode) == 0o700
     assert stat.S_IMODE(database.stat().st_mode) == 0o600
+
+
+def test_duplicate_bearer_tokens_are_rejected():
+    import pytest
+    from backend.app.api.auth import resolve_owner
+
+    shared = "same-secret-012345678901234567890123456789"
+    with pytest.raises(ValueError, match="unique bearer token"):
+        resolve_owner("Bearer " + shared, json.dumps({"alice": shared, "bob": shared}), True)
