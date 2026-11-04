@@ -1,0 +1,24 @@
+{
+  "id": "explanatory",
+  "version": "1.0.0",
+  "description": "Explanatory prose editing for clarity without adding unsupported examples or claims.",
+  "enabled_categories": [
+    "grammar",
+    "clarity",
+    "coherence",
+    "concision"
+  ],
+  "default_intervention": "minimal",
+  "require_human_review_for": [
+    "sentence",
+    "paragraph"
+  ],
+  "preserve": [
+    "facts",
+    "examples",
+    "citations",
+    "numbers",
+    "qualifications",
+    "author_intent"
+  ]
+}
