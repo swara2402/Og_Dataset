@@ -212,6 +212,36 @@ export default function DocumentWorkspace() {
     URL.revokeObjectURL(url);
   };
 
+  const handleHybridAnalysis = async (paragraph: ParagraphResult) => {
+    setHybridLoading(true);
+    setHybridResult(null);
+    setError(null);
+    const response = await analyzeParagraph({
+      paragraph_id: paragraph.id,
+      text: paragraph.original,
+      paragraph_type: paragraph.type,
+      category: paragraph.category,
+      document_context: results?.results.map((item) => item.original).join("\\n\\n").slice(0, 100000) || paragraph.original,
+      include_nlp: useSpacyContext,
+      include_local_llm: useLocalOllama,
+    });
+    if (!response) {
+      setError('Hybrid analysis failed. Check whether the selected local providers are enabled in backend settings.');
+    } else {
+      setHybridResult(response);
+    }
+    setHybridLoading(false);
+  };
+
+  const handleCopyProposal = async (proposal: HybridAnalysisResponse['proposals'][number]) => {
+    try {
+      await navigator.clipboard.writeText(proposal.suggested_text);
+      setCopiedProposalId(proposal.proposal_id);
+    } catch {
+      setError('Clipboard access was blocked by the browser. Select and copy the suggestion manually.');
+    }
+  };
+
   const handleReview = async (
     paragraph: ParagraphResult,
     action: 'accept' | 'reject'
