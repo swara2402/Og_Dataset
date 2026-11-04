@@ -90,3 +90,11 @@ def reset_rate_limits() -> None:
     """Clear limiter state; exposed for deterministic tests only."""
     with _rate_lock:
         _rate_events.clear()
+
+
+def is_admin(owner_id: str, raw_tokens: str, raw_admin_users: str) -> bool:
+    """Local single-user mode is admin; token users need explicit admin listing."""
+    if not raw_tokens.strip():
+        return owner_id == "local"
+    administrators = {item.strip() for item in raw_admin_users.split(",") if item.strip()}
+    return owner_id in administrators
