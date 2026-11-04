@@ -220,10 +220,10 @@ export default function DocumentWorkspace() {
     setError(null);
     const response = await analyzeParagraph({
       paragraph_id: paragraph.id,
-      text: paragraph.original,
+      text: paragraph.revised,
       paragraph_type: paragraph.type,
       category: paragraph.category,
-      document_context: results?.results.map((item) => item.original).join("\\n\\n").slice(0, 100000) || paragraph.original,
+      document_context: results?.results.map((item) => item.revised).join("\\n\\n").slice(0, 100000) || paragraph.original,
       include_nlp: useSpacyContext,
       include_local_llm: useLocalOllama,
     });
