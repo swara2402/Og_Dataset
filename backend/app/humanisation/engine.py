@@ -225,7 +225,9 @@ class RuleBasedEditingEngine:
         if "punctuation_spacing" in issues:
             candidate = re.sub(r"[ \t]+([,.;:!?])", r"\1", revised)
             candidate = re.sub(r"([,;:!?])(?=[A-Za-z])", r"\1 ", candidate)
-            candidate = re.sub(r"(?<!\d)\.(?=[A-Za-z])", ". ", candidate)
+            # Avoid splitting lowercase abbreviation components such as e.g.
+            # and i.e.; repair only a capitalised next sentence token.
+            candidate = re.sub(r"(?<=[.!?])(?=[A-Z])", " ", candidate)
             if candidate != revised:
                 revised = candidate
                 if "GRAMMAR-001" not in rules:
