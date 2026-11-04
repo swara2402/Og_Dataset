@@ -141,3 +141,41 @@ def test_duplicate_bearer_tokens_are_rejected():
     shared = "same-secret-012345678901234567890123456789"
     with pytest.raises(ValueError, match="unique bearer token"):
         resolve_owner("Bearer " + shared, json.dumps({"alice": shared, "bob": shared}), True)
+
+
+def test_global_settings_and_cache_actions_require_admin_token():
+    previous_tokens = settings.api_tokens
+    previous_required = settings.api_auth_required
+    previous_admins = settings.api_admin_users
+    settings.api_tokens = json.dumps({
+        "alice": "alice-admin-secret-012345678901234567890123456789",
+        "bob": "bob-user-secret-012345678901234567890123456789",
+    })
+    settings.api_auth_required = True
+    settings.api_admin_users = "alice"
+    alice = {"Authorization": "Bearer alice-admin-secret-012345678901234567890123456789"}
+    bob = {"Authorization": "Bearer bob-user-secret-012345678901234567890123456789"}
+    try:
+        with TestClient(app) as client:
+            assert client.patch("/api/v1/config/settings", headers=bob, json={"rule_verbose_logging": True}).status_code == 403
+            assert client.post("/api/v1/config/cache/clear", headers=bob).status_code == 403
+            assert client.patch("/api/v1/config/settings", headers=alice, json={"rule_verbose_logging": False}).status_code == 200
+            assert client.post("/api/v1/config/cache/clear", headers=alice).status_code == 200
+    finally:
+        settings.api_tokens = previous_tokens
+        settings.api_auth_required = previous_required
+        settings.api_admin_users = previous_admins
+
+
+def test_originality_request_rejects_oversized_inputs():
+    with TestClient(app) as client:
+        too_much_text = client.post(
+            "/api/v1/originality/check",
+            json={"confirm_search": False, "text": "x" * 100001},
+        )
+        too_many_paragraphs = client.post(
+            "/api/v1/originality/check",
+            json={"confirm_search": False, "text": "sample", "paragraph_ids": [str(i) for i in range(13)]},
+        )
+        assert too_much_text.status_code == 422
+        assert too_many_paragraphs.status_code == 422
