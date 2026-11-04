@@ -22,6 +22,8 @@ def _parse_tokens(raw_tokens: str) -> Dict[str, str]:
         raise ValueError("OG_API_TOKENS must be a non-empty JSON object.")
     if any(not isinstance(user, str) or not user.strip() or user == "local" or not isinstance(token, str) or len(token) < 32 for user, token in value.items()):
         raise ValueError("OG_API_TOKENS must map non-local user IDs to tokens of at least 32 characters.")
+    if len(set(value.values())) != len(value):
+        raise ValueError("Each OG_API_TOKENS user must have a unique bearer token.")
     return value
 
 
