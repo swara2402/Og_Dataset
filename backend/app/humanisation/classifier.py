@@ -20,6 +20,11 @@ from backend.app.document_processing.parser import DocumentParagraph
 
 # Academic section classification patterns
 SECTION_PATTERNS = {
+    "abstract": [r"abstract"],
+    "introduction": [r"introduction"],
+    "conclusion": [r"conclusions?"],
+    "acknowledgments": [r"acknowledg(?:e)?ments?"],
+    "future_work": [r"future\\s+work"],
     "literature_review": [
         r"literature\s*review",
         r"previous\s*work",
@@ -304,6 +309,11 @@ class ParagraphClassifier:
         # If we have an active section context, weight that heavily
         if self.current_section:
             section_mapping = {
+                "abstract": "ordinary_prose",
+                "introduction": "ordinary_prose",
+                "conclusion": "ordinary_prose",
+                "acknowledgments": "ordinary_prose",
+                "future_work": "ordinary_prose",
                 "literature_review": "literature_review",
                 "methodology": "methodology",
                 "results": "results_discussion",
