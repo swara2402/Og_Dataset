@@ -115,7 +115,7 @@ def main() -> int:
                 row["sentences"] += 1
                 row["word_counts"].append(len(words))
                 row["hedge_markers"] += sum(w in HEDGES for w in words)
-                row["be_auxiliary_markers"] += sum(w in PASSIVE_MARKERS for w in words)
+                row["be_auxiliary_markers"] += sum(w in BE_AUXILIARY_MARKERS for w in words)
                 row["opening_patterns"][classify_sentence_opening(words)] += 1
                 for category, terms in TRANSITIONS.items():
                     row["transition_markers"][category] += sum(w in terms for w in words)
