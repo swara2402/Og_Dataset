@@ -47,6 +47,7 @@ export default function DocumentWorkspace() {
     getProcessingStatus,
     getProcessingResults,
     reviewParagraph,
+    restoreVersion,
     reviewHybridProposal,
     analyzeParagraph,
     exportDocument,
@@ -247,6 +248,17 @@ export default function DocumentWorkspace() {
       ...current,
       [proposal.proposal_id]: action === 'accept' ? 'accepted' : 'rejected',
     }));
+    const refreshed = await getProcessingResults(file.jobId);
+    if (refreshed) setResults(refreshed);
+  };
+
+  const handleRestoreVersion = async (paragraphId: string, version: number) => {
+    if (!file?.jobId) return;
+    const response = await restoreVersion(file.jobId, paragraphId, version);
+    if (!response) {
+      setError('Could not restore this version. Please retry.');
+      return;
+    }
     const refreshed = await getProcessingResults(file.jobId);
     if (refreshed) setResults(refreshed);
   };
@@ -550,8 +562,6 @@ export default function DocumentWorkspace() {
                           <input type="checkbox" checked={useSpacyContext} onChange={(event) => setUseSpacyContext(event.target.checked)} />
                           Include spaCy context
                         </label>
-                        <label className="inline-flex items-center gap-2">
-                        </label>
                       </div>
                       {useSpacyContext && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Optional spaCy context analysis must be enabled and configured locally.</p>}
                       {hybridResult && hybridResult.paragraph_id === selected.id && (
@@ -598,6 +608,9 @@ export default function DocumentWorkspace() {
                           <span>· {version.created_at ? new Date(version.created_at).toLocaleTimeString() : ''}</span>
                         </div>
                         <p className="text-sm leading-relaxed text-neutral-800 dark:text-neutral-200">{version.text}</p>
+                        <button onClick={() => void handleRestoreVersion(selected.id, version.version)} disabled={selected.revised === version.text} className="btn-secondary mt-3 text-xs">
+                          {selected.revised === version.text ? "Current version" : "Restore this version"}
+                        </button>
                         {version.validation?.warnings && version.validation.warnings.length > 0 && (
                           <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">{version.validation.warnings.join(' · ')}</p>
                         )}
