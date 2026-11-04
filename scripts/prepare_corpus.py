@@ -40,7 +40,7 @@ def classify_sentence_opening(words: list[str]) -> str:
         return "subordinate_clause_led"
     if first in {"the", "a", "an", "this", "these", "those"}:
         return "determiner_led"
-    if first in {"we", "i", "they", "it", "he", "she", "you"}:
+    if first in {"we", "i", "they", "it", "he", "she", "you", "our", "my", "your", "their"}:
         return "pronoun_led"
     if first in {"in", "on", "at", "by", "for", "from", "with", "within", "across"}:
         return "prepositional_phrase_led"
