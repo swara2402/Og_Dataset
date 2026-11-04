@@ -124,8 +124,8 @@ class ResultCache:
 def _restore_placeholders(
     masked_text: str, replacements: Dict[str, str]
 ) -> Tuple[Optional[str], Optional[str]]:
-    found = sorted(PLACEHOLDER_RE.findall(masked_text))
-    expected = sorted(replacements)
+    found = PLACEHOLDER_RE.findall(masked_text)
+    expected = list(replacements)
     if found != expected:
         return None, "Protected content placeholders were missing, altered, or duplicated."
     restored = masked_text
@@ -155,7 +155,7 @@ class RuleBasedEditingEngine:
         self.reference_profile = dataset["reference_profile"]
         self.dataset_version = dataset["version"]
         self.rule_by_id = {rule["id"]: rule for rule in self.master_rules}
-        required_rule_ids = {"GRAMMAR-001"}
+        required_rule_ids = {"GRAMMAR-001", "WORDINESS-001"}
         if not required_rule_ids.issubset(self.rule_by_id):
             raise RuntimeError(
                 "OG Dataset is missing required deterministic rules: "
@@ -238,6 +238,36 @@ class RuleBasedEditingEngine:
                 if "GRAMMAR-001" not in rules:
                     rules.append("GRAMMAR-001")
                 changes.append("Collapsed repeated horizontal whitespace.")
+
+        # Only shorten a small allowlist of objectively redundant phrases.
+        # These are local edits and remain subject to author review.
+        if "wordy_phrase" in issues:
+            concise_phrases = (
+                (r"\bin order to\b", "to"),
+                (r"\bdue to the fact that\b", "because"),
+                (r"\bat this point in time\b", "now"),
+                (r"\bin the event that\b", "if"),
+            )
+            for pattern, replacement in concise_phrases:
+                candidate, count = re.subn(
+                    pattern,
+                    lambda match: (
+                        replacement.capitalize()
+                        if match.group(0)[:1].isupper()
+                        else replacement
+                    ),
+                    revised,
+                    flags=re.IGNORECASE,
+                )
+                if count:
+                    if revised[:1].isupper():
+                        candidate = candidate[:1].upper() + candidate[1:]
+                    revised = candidate
+                    if "WORDINESS-001" not in rules:
+                        rules.append("WORDINESS-001")
+                    changes.append(
+                        f"Shortened a redundant phrase ({count} occurrence(s)) while preserving its stated relationship."
+                    )
 
         # Dataset additions may define explicitly contextualized word choices.
         # Draft examples and unqualified rule guidance are never treated as synonym lists.

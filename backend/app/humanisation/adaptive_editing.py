@@ -141,6 +141,14 @@ def assess_editing_needs(text: str) -> Dict[str, Any]:
     if re.search(r"[ \t]{2,}", value):
         issues.append("repeated_whitespace")
 
+    # A short allowlist of objectively redundant phrases; not a style score.
+    if re.search(
+        r"\b(?:in order to|due to the fact that|at this point in time|in the event that)\b",
+        value,
+        re.IGNORECASE,
+    ):
+        issues.append("wordy_phrase")
+
     long_sentences = sum(
         len(re.findall(r"\b[\w'-]+\b", sentence)) > 35 for sentence in sentences
     )
