@@ -214,7 +214,7 @@ def assess_editing_needs(text: str) -> Dict[str, Any]:
         r"\b(?:e\.g|i\.e)\.(?=[A-Za-z])", value, re.I
     )
     if (
-        re.search(r"[ \t]+[,.!?;:], value)
+        re.search(r"[ \t]+[,.!?;:]", value)
         or missing_abbreviation_space
         or re.search(r"(?<!\d)[.!?;:,](?=[A-Za-z])", punctuation_probe)
     ):
