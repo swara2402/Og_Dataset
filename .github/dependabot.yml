@@ -4,8 +4,16 @@ updates:
     directory: "/frontend"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 8
     groups:
+      frontend-eslint-major:
+        patterns:
+          - "eslint"
+          - "@typescript-eslint/*"
+          - "eslint-plugin-react-hooks"
+          - "eslint-plugin-react-refresh"
+        update-types:
+          - "major"
       frontend-patch-and-minor:
         update-types:
           - "minor"
