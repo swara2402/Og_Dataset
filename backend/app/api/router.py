@@ -463,7 +463,6 @@ async def refine_paragraph(job_id: str, request: RefineRequest) -> Dict[str, Any
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     job.writing_quality = None
     job.ai_indicators = None
-    job.originality = None
     job_store.save(job)
     return {
         "job_id": job.job_id,
@@ -535,7 +534,6 @@ async def review_hybrid_proposal(job_id: str, request: HybridProposalReviewReque
 
     job.writing_quality = None
     job.ai_indicators = None
-    job.originality = None
     job_store.save(job)
     return {"job_id": job.job_id, "paragraph": state.to_dict(), "decision": request.action}
 
@@ -573,7 +571,6 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
         _engine._finalise_statistics(job)
     job.writing_quality = None
     job.ai_indicators = None
-    job.originality = None
     job_store.save(job)
     return {
         "job_id": job.job_id,
@@ -607,7 +604,6 @@ async def restore_version(job_id: str, request: RestoreVersionRequest) -> Dict[s
         _engine._finalise_statistics(job)
     job.writing_quality = None
     job.ai_indicators = None
-    job.originality = None
     job_store.save(job)
     return {"job_id": job.job_id, "paragraph": state.to_dict(), "restored_version": request.version}
 
