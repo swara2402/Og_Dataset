@@ -19,7 +19,6 @@ _DATASET_ROOT = Path(
         str(Path(__file__).resolve().parents[3] / "knowledge_base"),
     )
 ).expanduser()
-_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 _REPEAT_WORD_RE = re.compile(r"\b([A-Za-z]{2,})[ \t]+\1\b", re.I)
 _SAFE_REPEAT_WORDS = {"a", "an", "and", "in", "of", "the", "to"}
 _COMMON_WORDS = {
