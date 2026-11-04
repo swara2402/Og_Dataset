@@ -114,3 +114,12 @@ Changes landed on `main` after the audit snapshot:
 - Retained optional public-web originality lookup as a separate network-only feature. It is not called by document editing; use the core workflow offline by leaving that feature unused/disabled.
 
 The follow-up code changes are in commits after the original audit snapshot. CI must pass on the final current `main` SHA before this follow-up is considered verified.
+
+
+## Further learning-data and offline NLP work
+
+- Added a strict JSONL validator and approved-only export for revision pairs. It checks schema, licence allowlist, reviewer identity, explicit meaning-preservation approval, duplicate IDs and normalized duplicate text pairs. It never changes draft status.
+- Added a provenance-aware terminology schema and validator with discipline-specific uniqueness, preferred forms, and substitutions to avoid. The inventory is currently empty; no terms have been falsely marked as expert-reviewed.
+- Added both validators to CI.
+- Extended optional spaCy use beyond passive observation: when explicitly enabled for paragraph analysis, it can identify narrowly defined subject/finite-verb agreement candidates using POS, dependency and morphological number features. The adapter creates deterministic, review-required proposals and validates protected content, citations, numbers and modality before returning them. It does not generate text or auto-apply corrections.
+- The agreement adapter is intentionally conservative: it skips ambiguous/coordinated/pronominal subjects and unsupported verb forms. Broader grammar, clause restructuring, voice conversion and paragraph coherence remain incomplete and need their own testable rule families.
