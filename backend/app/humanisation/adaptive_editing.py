@@ -38,13 +38,36 @@ def _read_json(relative_path: str) -> Any:
 
 
 def load_quality_rules() -> List[Dict[str, Any]]:
+    """Load rule packs listed by the single canonical master manifest."""
     data = _read_json("rules/master_rules.json")
-    rules = data.get("rules") if isinstance(data, dict) else None
-    if not isinstance(rules, list) or not all(
-        isinstance(rule, dict) and isinstance(rule.get("id"), str) for rule in rules
+    if not isinstance(data, dict):
+        raise RuntimeError("OG Dataset master rules manifest must be a JSON object.")
+    rules = data.get("rules")
+    if isinstance(rules, list):
+        # Backward compatibility for externally supplied older datasets.
+        packs = [rules]
+    else:
+        filenames = data.get("rule_sets")
+        if not isinstance(filenames, list) or not filenames:
+            raise RuntimeError("OG Dataset master rules manifest has no rule_sets.")
+        packs = []
+        for filename in filenames:
+            if not isinstance(filename, str) or Path(filename).name != filename or not filename.endswith(".json"):
+                raise RuntimeError("OG Dataset rule pack entries must be plain JSON filenames.")
+            pack = _read_json(f"rules/{filename}")
+            pack_rules = pack.get("rules") if isinstance(pack, dict) else None
+            if not isinstance(pack_rules, list) or not pack_rules:
+                raise RuntimeError(f"OG Dataset rule pack {filename} has an invalid rules array.")
+            packs.append(pack_rules)
+    flattened = [rule for pack in packs for rule in pack]
+    if not flattened or not all(
+        isinstance(rule, dict) and isinstance(rule.get("id"), str) for rule in flattened
     ):
-        raise RuntimeError("OG Dataset master rules have an invalid structure.")
-    return rules
+        raise RuntimeError("OG Dataset rule packs have an invalid structure.")
+    identifiers = [rule["id"] for rule in flattened]
+    if len(identifiers) != len(set(identifiers)):
+        raise RuntimeError("OG Dataset rule IDs must be unique across all rule packs.")
+    return flattened
 
 
 def load_editing_policy() -> Dict[str, Any]:
