@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     cache_max_size: int = 1000
     max_file_size_mb: int = 25
 
+    # Optional local PDF OCR; never enabled implicitly.
+    pdf_ocr_enabled: bool = False
+    pdf_ocr_language: str = "eng"
+    pdf_ocr_dpi: int = 200
+
     # Optional local NLP/LLM providers. Both are opt-in and disabled by default.
     spacy_enabled: bool = False
     spacy_model: str = "en_core_web_sm"
