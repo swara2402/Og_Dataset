@@ -179,7 +179,7 @@ def _latex_text(job: Job) -> str:
     """Splice accepted prose edits into the original TeX source by exact offsets."""
     if job.file_type != "tex" or not job.original_bytes:
         raise ValueError("LaTeX export requires the original .tex source file.")
-    source = job.original_bytes.decode("utf-8-sig")
+    source = job.original_bytes.decode("utf-8")
     if len(job.document.paragraphs) != len(job.paragraphs):
         raise ValueError("LaTeX paragraph mapping is incomplete; source was not modified.")
 
