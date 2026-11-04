@@ -2,8 +2,7 @@
 
 A local document editor for academic and technical writing. Its core pipeline is
 deterministic and rule-based: it reads the complete document, applies only
-small, explainable corrections, and leaves good text unchanged. The editor does
-not require Ollama, an external LLM, or a model API.
+small, explainable corrections, and leaves good text unchanged. The editor has no generative-AI provider integration and does not require a model runtime or model API.
 
 The canonical rules, adaptive policy, examples, schemas, profiles, and preservation
 policies are maintained in [`knowledge_base/`](./knowledge_base/). The historical
@@ -124,11 +123,7 @@ fail closed with `503` if tokens are missing. Do not expose the API publicly
 without TLS termination, strong unique secrets, a shared rate limiter where
 needed, protected database and upload storage, and operational monitoring.
 
-The separate `hosted_gateway.py` protects access to an Ollama model gateway
-only; it does **not** authenticate the document API. CORS is not an
-authentication mechanism. The example configuration disables public-web
-originality searches and debug mode by default; enable optional network
-features deliberately.
+The document editor does not call model APIs. Public-web originality search is a separate network feature and is not part of offline editing. CORS is not an authentication mechanism.
 
 ## Corpus-driven writing resources
 
@@ -162,7 +157,7 @@ python3 -m pytest -q
 python3 scripts/validate_dataset.py
 ```
 
-The tests use local fixtures and do not call Ollama or the public web.
+The tests use local fixtures and do not call external model services.
 
 ## API overview
 
@@ -175,7 +170,6 @@ The tests use local fixtures and do not call Ollama or the public web.
 | POST | `/api/v1/processing/{job_id}/review` | Accept or reject a paragraph change |
 | POST | `/api/v1/processing/{job_id}/cancel` | Cancel processing |
 | GET | `/api/v1/analysis/{job_id}/report` | Writing-quality and validation report |
-| POST | `/api/v1/originality/check` | Explicit opt-in public-web search |
 | POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |
 
 ## Repository audit
@@ -204,7 +198,7 @@ another rule set.
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
 - Jobs and review decisions are persisted in a local SQLite database. API-level owner checks prevent one configured token user from accessing another user's job through the application, but all records still share the same database and host filesystem. This is not OS-level tenant isolation or per-user encryption. Protect database, upload and export directories with restrictive filesystem permissions, backups and host access controls before multi-user use.
-- The Ollama adapter is opt-in, requires a locally running Ollama service and an explicitly configured model, and is never called by default.
+- The application contains no Ollama integration. Optional spaCy analysis is local and never generates replacement text.
 - The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
 - Only five synthetic, draft examples are currently provided; there are no
   verified human revision pairs to support broad automatic rewriting.
