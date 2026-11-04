@@ -152,3 +152,37 @@ def test_docx_document_workflow_preserves_run_formatting_after_acceptance():
         )
         assert restored_paragraph.runs[0].bold is True
         assert any(run.italic is True for run in restored_paragraph.runs)
+
+
+def test_paragraph_version_can_be_restored_and_persisted():
+    original = "The the model was evaluated ,and its result was recorded."
+    with TestClient(app) as client:
+        job_id, _ = _upload_and_wait(client, "restore-version.txt", original)
+        document = client.get(f"/api/v1/documents/{job_id}").json()
+        paragraph = next(item for item in document["paragraphs"] if item["original"] == original)
+        assert paragraph["version_count"] >= 2
+
+        restored = client.post(
+            f"/api/v1/processing/{job_id}/restore-version",
+            json={"paragraph_id": paragraph["id"], "version": 0},
+        )
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["paragraph"]["revised"] == original
+        assert restored.json()["paragraph"]["review_status"] == "unchanged"
+
+        refreshed = client.get(f"/api/v1/processing/{job_id}/results").json()
+        state = next(item for item in refreshed["results"] if item["id"] == paragraph["id"])
+        assert state["revised"] == original
+
+
+def test_restore_version_rejects_unknown_version():
+    original = "The model was evaluated."
+    with TestClient(app) as client:
+        job_id, _ = _upload_and_wait(client, "restore-missing.txt", original)
+        document = client.get(f"/api/v1/documents/{job_id}").json()
+        paragraph = next(item for item in document["paragraphs"] if item["original"] == original)
+        response = client.post(
+            f"/api/v1/processing/{job_id}/restore-version",
+            json={"paragraph_id": paragraph["id"], "version": 999},
+        )
+        assert response.status_code == 404
