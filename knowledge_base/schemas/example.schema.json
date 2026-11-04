@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Og_Dataset revision example",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "example_id",
+    "source",
+    "document_type",
+    "authorship_status",
+    "original_text",
+    "edited_text",
+    "edit_scope",
+    "intervention_level",
+    "rules_applied",
+    "edit_rationale",
+    "change_summary",
+    "protected_elements",
+    "meaning_review",
+    "review_status",
+    "reviewer_notes"
+  ],
+  "properties": {
+    "example_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "kind",
+        "reference",
+        "location"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "location": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "document_type": {
+      "type": "string"
+    },
+    "authorship_status": {
+      "type": "string"
+    },
+    "original_text": {
+      "type": "string"
+    },
+    "edited_text": {
+      "type": "string"
+    },
+    "edit_scope": {
+      "enum": [
+        "none",
+        "word",
+        "phrase",
+        "sentence",
+        "paragraph"
+      ]
+    },
+    "intervention_level": {
+      "enum": [
+        "none",
+        "minimal",
+        "moderate",
+        "substantial"
+      ]
+    },
+    "rules_applied": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "edit_rationale": {
+      "type": "string"
+    },
+    "change_summary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "protected_elements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "meaning_review": {
+      "enum": [
+        "preserved",
+        "uncertain",
+        "changed",
+        "not_reviewed"
+      ]
+    },
+    "review_status": {
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected"
+      ]
+    },
+    "reviewer_notes": {
+      "type": "string"
+    }
+  }
+}
