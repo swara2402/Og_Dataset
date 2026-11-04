@@ -26,8 +26,9 @@ jobs:
       - name: Upgrade vulnerable frontend tooling
         working-directory: frontend
         run: |
-          npm install --save-dev "vite@^8.3.5" "@vitejs/plugin-react@^6.2.1" "@typescript-eslint/eslint-plugin@^8.72.1" "@typescript-eslint/parser@^8.72.1"
-          npm audit fix
+          npm install --save-dev --save-exact "vite@8.3.5" "@vitejs/plugin-react@6.2.1" "@typescript-eslint/eslint-plugin@8.72.1" "@typescript-eslint/parser@8.72.1"
+          npm audit --json > /tmp/npm-audit.json || true
+          node -e "const a=require('/tmp/npm-audit.json'); for (const [name,v] of Object.entries(a.vulnerabilities || {})) console.log(JSON.stringify({name,severity:v.severity,range:v.range,fixAvailable:v.fixAvailable})); if ((a.metadata?.vulnerabilities?.total || 0) > 0) process.exit(1);"
       - name: Require clean dependency audit
         working-directory: frontend
         run: npm audit --audit-level=moderate
