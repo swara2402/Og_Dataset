@@ -1,9 +1,9 @@
-"""In-memory job and paragraph state for Turnitout V2.
+"""Job and paragraph state with local SQLite-backed persistence for Turnitout V2.
 
-The application is a local, single-user tool. Jobs live in memory and original
-uploads are retained only for the lifetime of the process so DOCX export can
-preserve the source structure. Nothing is written to a database or remote
-service.
+The application is a local, single-user tool. Job snapshots, review decisions,
+versions, and original uploads are stored in a local SQLite database so work
+can be recovered after an application restart. No document content is sent to
+remote storage by this persistence layer.
 """
 from __future__ import annotations
 
