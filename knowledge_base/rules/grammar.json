@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "rule_set": "grammar",
   "rules": [
     {
@@ -15,6 +15,22 @@
       ],
       "preservation": [
         "Keep technical terms, quantities, names, and relationships unchanged."
+      ]
+    },
+    {
+      "id": "GRAMMAR-002",
+      "category": "grammar",
+      "name": "Correct explicit plural-subject agreement errors",
+      "guidance": "Correct only listed, adjacent plural subject and singular finite-verb pairs; abstain when the subject or clause structure is ambiguous.",
+      "apply_when": [
+        "A listed plural subject is immediately followed by a listed singular verb form."
+      ],
+      "do_not_apply_when": [
+        "The subject is a collective noun, an unlisted noun, or a discipline-dependent term such as data.",
+        "A modifier, prepositional phrase, or subordinate clause separates the subject from the verb."
+      ],
+      "preservation": [
+        "Keep the subject, proposition, tense, modality, quantities, citations, and technical terminology unchanged."
       ]
     }
   ]

@@ -338,7 +338,7 @@ def test_engine_processes_long_documents_without_dropping_paragraphs():
     )
     assert job.paragraphs[1].current_text == paragraphs[1].text
     assert job.statistics["unchanged_paragraphs"] > 0
-    assert job.statistics["dataset"]["version"] == "1.1.0"
+    assert job.statistics["dataset"]["version"] == "1.2.0"
 
 
 def test_engine_does_not_skip_or_truncate_a_long_paragraph():
@@ -604,7 +604,7 @@ def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
 
             results = client.get(f"/api/v1/processing/{job_id}/results").json()
             assert len(results["results"]) == 4
-            assert results["statistics"]["dataset"]["version"] == "1.1.0"
+            assert results["statistics"]["dataset"]["version"] == "1.2.0"
             assert results["results"][1]["proposal"] == (
                 "The abstract reports 67% accuracy in 2023."
             )
@@ -623,3 +623,15 @@ def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
             assert "Introduction" in exported.text
     finally:
         app_settings.export_dir = original_export_dir
+
+
+def test_document_job_creates_reviewable_plural_agreement_proposal():
+    job = _job([_paragraph("agreement", "The results shows a consistent improvement.")])
+    asyncio.run(HumanisationEngine(Settings()).process_job(job))
+
+    state = job.paragraphs[0]
+    assert state.current_text == "The results show a consistent improvement."
+    assert state.review_status == "pending"
+    assert state.applied_rule_ids == ["GRAMMAR-002"]
+    assert state.requires_human_review is True
+    assert state.validation["valid"] is True

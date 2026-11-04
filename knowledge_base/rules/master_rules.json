@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "purpose": "Improve clarity, correctness, precision, and consistency while preserving the author's meaning, evidence, terminology, and voice.",
   "rule_sets": [
     "grammar.json",

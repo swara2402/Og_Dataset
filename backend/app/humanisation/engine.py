@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from backend.app.core.config import Settings
 from backend.app.core.jobs import Job, ParagraphState, job_store
 from backend.app.humanisation.adaptive_editing import (
+    _SUBJECT_VERB_RE,
     assess_editing_needs,
     load_dataset,
 )
@@ -156,7 +157,7 @@ class RuleBasedEditingEngine:
         self.reference_profile = dataset["reference_profile"]
         self.dataset_version = dataset["version"]
         self.rule_by_id = {rule["id"]: rule for rule in self.master_rules}
-        required_rule_ids = {"GRAMMAR-001"}
+        required_rule_ids = {"GRAMMAR-001", "GRAMMAR-002"}
         if not required_rule_ids.issubset(self.rule_by_id):
             raise RuntimeError(
                 "OG Dataset is missing required deterministic rules: "
@@ -220,6 +221,36 @@ class RuleBasedEditingEngine:
                 revised = candidate
                 rules.append("GRAMMAR-001")
                 changes.append("Removed an accidental repeated function word.")
+
+        # Correct only explicit plural-subject / singular-verb pairs. Ambiguous
+        # collectives, "data", intervening clauses, and unlisted nouns abstain.
+        if "subject_verb_agreement" in issues:
+            plural_forms = {
+                "is": "are", "was": "were", "has": "have", "does": "do",
+                "shows": "show", "indicates": "indicate",
+                "demonstrates": "demonstrate", "suggests": "suggest",
+                "provides": "provide", "reports": "report", "reveals": "reveal",
+                "remains": "remain", "increases": "increase",
+                "decreases": "decrease", "affects": "affect", "leads": "lead",
+                "contains": "contain", "includes": "include",
+                "requires": "require", "uses": "use", "produces": "produce",
+                "improves": "improve",
+            }
+
+            def correct_plural_agreement(match: re.Match[str]) -> str:
+                verb = match.group(2)
+                corrected = plural_forms[verb.casefold()]
+                if verb.isupper():
+                    corrected = corrected.upper()
+                elif verb[:1].isupper():
+                    corrected = corrected.capitalize()
+                return f"{match.group(1)} {corrected}"
+
+            candidate = _SUBJECT_VERB_RE.sub(correct_plural_agreement, revised)
+            if candidate != revised:
+                revised = candidate
+                rules.append("GRAMMAR-002")
+                changes.append("Corrected a clear plural-subject and singular-verb agreement error.")
 
         # Punctuation and spacing corrections remain local and do not rewrite sentences.
         if "punctuation_spacing" in issues:
