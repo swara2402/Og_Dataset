@@ -62,6 +62,34 @@ export interface AppSettings {
   styles: WritingStyle[];
 }
 
+export interface HybridProposal {
+  proposal_id: string;
+  paragraph_id: string;
+  source_engine: string;
+  rule_id: string | null;
+  original_text: string;
+  suggested_text: string;
+  category: string;
+  explanation: string;
+  confidence: number | null;
+  semantic_risk: string;
+  requires_review: boolean;
+  status: string;
+  start_offset: number | null;
+  end_offset: number | null;
+  dataset_version: string | null;
+  model_version: string | null;
+  validation: Record<string, unknown>;
+}
+
+export interface HybridAnalysisResponse {
+  paragraph_id: string;
+  proposals: HybridProposal[];
+  context: Record<string, unknown>;
+  applied: false;
+  review_required: boolean;
+}
+
 export interface ProcessingProgress {
   phase: string;
   pass: number;
@@ -304,6 +332,15 @@ interface APIContextType {
   healthCheck: () => Promise<HealthStatus | null>;
   getSettings: () => Promise<AppSettings | null>;
   getEngineStatus: () => Promise<EngineStatus | null>;
+  analyzeParagraph: (request: {
+    paragraph_id: string;
+    text: string;
+    paragraph_type?: string;
+    category?: string;
+    document_context?: string;
+    include_nlp?: boolean;
+    include_local_llm?: boolean;
+  }) => Promise<HybridAnalysisResponse | null>;
   updateSettings: (update: Partial<AppSettings>) => Promise<AppSettings | null>;
   clearCache: () => Promise<boolean>;
   uploadDocument: (
@@ -382,6 +419,24 @@ export function APIProvider({ children }: { children: ReactNode }) {
       const response = await api.get<EngineStatus>('/engines/status');
       return response.data;
     } catch {
+      return null;
+    }
+  }, []);
+
+  const analyzeParagraph = useCallback(async (request: {
+    paragraph_id: string;
+    text: string;
+    paragraph_type?: string;
+    category?: string;
+    document_context?: string;
+    include_nlp?: boolean;
+    include_local_llm?: boolean;
+  }): Promise<HybridAnalysisResponse | null> => {
+    try {
+      const response = await api.post<HybridAnalysisResponse>('/analysis/paragraph', request, { timeout: 180000 });
+      return response.data;
+    } catch (error) {
+      console.error('Hybrid paragraph analysis failed:', extractError(error));
       return null;
     }
   }, []);
@@ -584,6 +639,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     healthCheck,
     getSettings,
     getEngineStatus,
+    analyzeParagraph,
     updateSettings,
     clearCache,
     uploadDocument,
