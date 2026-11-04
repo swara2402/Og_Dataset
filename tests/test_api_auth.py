@@ -118,3 +118,17 @@ def test_documented_environment_variable_names_are_loaded():
     assert configured.api_tokens.startswith('{')
     assert configured.api_auth_required is True
     assert configured.api_rate_limit_per_minute == 17
+
+
+def test_sqlite_job_storage_uses_private_posix_permissions(tmp_path):
+    import os
+    import stat
+    import pytest
+    from backend.app.core.jobs import SQLiteJobStore
+
+    if os.name == "nt":
+        pytest.skip("POSIX file permissions are not available on Windows")
+    database = tmp_path / "private-data" / "jobs.sqlite3"
+    SQLiteJobStore(db_path=str(database))
+    assert stat.S_IMODE(database.parent.stat().st_mode) == 0o700
+    assert stat.S_IMODE(database.stat().st_mode) == 0o600
