@@ -212,6 +212,17 @@ def test_validator_rejects_quantifier_and_causality_changes():
         assert result["checks"]["meaning_markers"] is False
 
 
+def test_validator_tracks_meaning_markers_after_unicode_text():
+    original = "Die Straße may improve accuracy."
+    revised = "Die Straße improves accuracy."
+    result = validate_rewrite(
+        original, revised, original, revised, [],
+        semantic_similarity_override=0.95,
+    )
+    assert result["valid"] is False
+    assert result["checks"]["meaning_markers"] is False
+
+
 def test_validator_accepts_faithful_rewrite_with_semantic_override():
     original = "Adoption reached 67% in 2023 (Smith, 2023)."
     revised = "In 2023, 67% of firms had adopted the technology (Smith, 2023)."
