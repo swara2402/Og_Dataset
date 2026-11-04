@@ -82,5 +82,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
-Path(settings.export_dir).mkdir(parents=True, exist_ok=True)
+for _storage_dir in (Path(settings.upload_dir), Path(settings.export_dir)):
+    _storage_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        _storage_dir.chmod(0o700)
+    except OSError:
+        # Permission hardening is best-effort on filesystems without POSIX modes.
+        pass
