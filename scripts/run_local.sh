@@ -14,7 +14,11 @@ if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,
   exit 1
 fi
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-  echo "Node.js 18+ and npm are required for the frontend." >&2
+  echo "Node.js 20.19+ (or 22.12+) and npm are required for the frontend." >&2
+  exit 1
+fi
+if ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit((major === 20 && minor >= 19) || (major === 22 && minor >= 12) || major > 22 ? 0 : 1)'; then
+  echo "Vite 8 requires Node.js 20.19+ or 22.12+." >&2
   exit 1
 fi
 if ! "$PYTHON_BIN" -c 'import fastapi, uvicorn, docx, pypdf, reportlab, jsonschema, multipart' >/dev/null 2>&1; then
