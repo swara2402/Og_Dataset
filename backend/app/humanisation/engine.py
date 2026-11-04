@@ -228,9 +228,9 @@ class RuleBasedEditingEngine:
             # Repair a missing space after common abbreviations without
             # splitting their internal periods or capitalised initialisms.
             candidate = re.sub(
-                r"\\b(e\\.g|i\\.e)\\.(?=[A-Za-z])", r"\\1. ", candidate, flags=re.I
+                r"\b(e\.g|i\.e)\.(?=[A-Za-z])", r"\1. ", candidate, flags=re.I
             )
-            candidate = re.sub(r"(?<![A-Z]\\.)(?<=[.!?])(?=[A-Z])", " ", candidate)
+            candidate = re.sub(r"(?<![A-Z]\.)(?<=[.!?])(?=[A-Z])", " ", candidate)
             if candidate != revised:
                 revised = candidate
                 if "GRAMMAR-001" not in rules:
