@@ -12,7 +12,10 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+
 ROOT = Path(__file__).resolve().parents[1]
+MANIFEST_SCHEMA = ROOT / "knowledge_base/schemas/corpus_source.schema.json"
 ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
 SECTIONS = {"abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion"}
 HEDGES = {"may", "might", "could", "possibly", "potentially", "suggest", "suggests", "suggested", "appears", "indicates"}
@@ -48,6 +51,8 @@ def classify_sentence_opening(words: list[str]) -> str:
 
 
 def load_manifest(path: Path) -> list[dict]:
+    schema = json.loads(MANIFEST_SCHEMA.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
     records, seen = [], set()
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
@@ -59,6 +64,9 @@ def load_manifest(path: Path) -> list[dict]:
         required = {"source_id", "title", "license", "text_mining_permitted", "discipline", "sections", "local_text"}
         if not required.issubset(item):
             raise ValueError(f"Manifest line {line_no}: missing {sorted(required - item.keys())}")
+        schema_errors = sorted(validator.iter_errors(item), key=lambda error: list(error.absolute_path))
+        if schema_errors:
+            raise ValueError(f"Manifest line {line_no}: {schema_errors[0].message}")
         sid = item["source_id"]
         if not isinstance(sid, str) or not sid or sid in seen:
             raise ValueError(f"Manifest line {line_no}: source_id must be unique and non-empty")
@@ -80,17 +88,28 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=ROOT / "knowledge_base/corpus/sources.jsonl")
     parser.add_argument("--input-dir", type=Path, default=ROOT / "data/corpus_raw")
     parser.add_argument("--output", type=Path, default=ROOT / "knowledge_base/corpus/observations.json")
+    parser.add_argument("--max-source-mb", type=int, default=50)
+    parser.add_argument("--validate-only", action="store_true", help="Validate the source manifest without reading corpus files.")
     args = parser.parse_args()
+    if args.max_source_mb < 1 or args.max_source_mb > 500:
+        parser.error("--max-source-mb must be between 1 and 500")
     manifest = load_manifest(args.manifest)
+    if args.validate_only:
+        print(json.dumps({"valid": True, "source_count": len(manifest)}, indent=2))
+        return 0
     stats = defaultdict(lambda: {"sentences": 0, "word_counts": [], "hedge_markers": 0,
                                  "be_auxiliary_markers": 0, "transition_markers": Counter(), "opening_patterns": Counter()})
     disciplines, total = Counter(), 0
     for source in manifest:
         source_path = args.input_dir / source["local_text"]
+        if source_path.is_symlink():
+            raise ValueError(f"Corpus source must not be a symbolic link: {source['source_id']}")
         if not source_path.is_file():
             if source["license"] == "SYNTHETIC":
                 continue
             raise FileNotFoundError(f"Missing local text for {source['source_id']}: {source_path}")
+        if source_path.stat().st_size > args.max_source_mb * 1024 * 1024:
+            raise ValueError(f"Corpus source exceeds the {args.max_source_mb} MB limit: {source['source_id']}")
         raw = source_path.read_text(encoding="utf-8")
         # Text extracts use explicit [SECTION: section_name] markers.
         current = "abstract"
