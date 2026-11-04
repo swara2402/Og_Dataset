@@ -4,7 +4,10 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PYTHON_BIN="${PYTHON:-python3}"
+PYTHON_BIN="${PYTHON:-$ROOT/.venv/bin/python}"
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="${PYTHON:-python3}"
+fi
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   echo "Python 3.12+ is required. Install Python, then retry." >&2
   exit 1
