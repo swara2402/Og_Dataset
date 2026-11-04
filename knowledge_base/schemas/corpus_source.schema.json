@@ -8,12 +8,23 @@
     "source_id": {"type": "string", "minLength": 1, "maxLength": 120, "pattern": "^[A-Za-z0-9._-]+$"},
     "title": {"type": "string", "minLength": 1, "maxLength": 500},
     "url": {"type": ["string", "null"], "maxLength": 2048},
-    "license": {"type": "string", "minLength": 1, "maxLength": 80},
+    "license": {"enum": ["SYNTHETIC", "CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"]},
     "text_mining_permitted": {"const": true},
     "discipline": {"type": "string", "minLength": 1, "maxLength": 120},
     "sections": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion"]}},
     "local_text": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*[.]txt$"},
     "license_evidence": {"type": ["string", "null"], "maxLength": 2048},
     "attribution": {"type": ["string", "null"], "maxLength": 1000}
-  }
+  },
+  "allOf": [{
+    "if": {"properties": {"license": {"const": "SYNTHETIC"}}},
+    "else": {
+      "required": ["license_evidence", "attribution"],
+      "properties": {
+        "url": {"type": "string", "minLength": 1},
+        "license_evidence": {"type": "string", "minLength": 1},
+        "attribution": {"type": "string", "minLength": 1}
+      }
+    }
+  }]
 }
