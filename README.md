@@ -4,8 +4,7 @@ A local document editor for academic and technical writing. Its core pipeline is
 deterministic and rule-based: it reads the complete document, applies only
 small, explainable corrections, and leaves good text unchanged. The editor has no generative-AI provider integration and does not require a model runtime or model API.
 
-The canonical rules, adaptive policy, examples, schemas, profiles, and preservation
-policies are maintained in [`knowledge_base/`](./knowledge_base/). The historical
+The canonical rule manifest and categorized grammar, vocabulary, morphology, and academic-writing rule packs, plus datasets, schemas, profiles, and preservation policies, are maintained in [`knowledge_base/`](./knowledge_base/). The historical
 `Og_Dataset` gitlink is not used by runtime processing because this branch does not
 contain a usable `.gitmodules` remote mapping. The backend reads the
 dataset files at startup and refreshes them for each document job. Dataset
@@ -184,7 +183,7 @@ The latest source-level architecture and feature audit is documented in [`docs/r
 
 ## Dataset updates
 
-Edit only `knowledge_base/` for rules, profiles, schemas, examples and policies.
+Edit only `knowledge_base/` for rules, profiles, schemas, examples and policies. Add rules to the appropriate JSON pack and register new packs in `knowledge_base/rules/master_rules.json`.
 Run `python3 scripts/validate_dataset.py` before committing dataset changes.
 Examples labelled `draft` are never used as approved training or rewriting pairs.
 
