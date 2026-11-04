@@ -14,14 +14,29 @@ current_owner_id: ContextVar[str] = ContextVar("current_owner_id", default="loca
 
 
 def _parse_tokens(raw_tokens: str) -> Dict[str, str]:
+    def reject_duplicate_users(pairs):
+        parsed = {}
+        for user_id, token in pairs:
+            if user_id in parsed:
+                raise ValueError("OG_API_TOKENS must not contain duplicate user IDs.")
+            parsed[user_id] = token
+        return parsed
+
     try:
-        value = json.loads(raw_tokens)
+        value = json.loads(raw_tokens, object_pairs_hook=reject_duplicate_users)
     except json.JSONDecodeError as exc:
         raise ValueError("OG_API_TOKENS must contain a valid JSON object.") from exc
     if not isinstance(value, dict) or not value:
         raise ValueError("OG_API_TOKENS must be a non-empty JSON object.")
-    if any(not isinstance(user, str) or not user.strip() or user == "local" or not isinstance(token, str) or len(token) < 32 for user, token in value.items()):
-        raise ValueError("OG_API_TOKENS must map non-local user IDs to tokens of at least 32 characters.")
+    if len(value) > 500:
+        raise ValueError("OG_API_TOKENS cannot contain more than 500 users.")
+    if any(
+        not isinstance(user, str) or not user.strip() or len(user) > 128 or user == "local"
+        or not isinstance(token, str) or len(token) < 32 or len(token) > 512
+        or token.strip() != token
+        for user, token in value.items()
+    ):
+        raise ValueError("OG_API_TOKENS must map non-local user IDs to tokens of 32-512 characters.")
     if len(set(value.values())) != len(value):
         raise ValueError("Each OG_API_TOKENS user must have a unique bearer token.")
     return value
