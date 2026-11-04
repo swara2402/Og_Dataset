@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import re
+from difflib import SequenceMatcher
 import time
 from pathlib import Path
 from typing import List
@@ -41,13 +42,64 @@ def _export_text(state: ParagraphState) -> str:
 
 
 def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> None:
-    """Replace paragraph text while keeping paragraph/first-run formatting."""
-    if paragraph.runs:
-        paragraph.runs[0].text = text
-        for run in paragraph.runs[1:]:
-            run.text = ""
-    else:
+    """Replace paragraph text while retaining inline formatting where text survives.
+
+    Characters that are inserted or substituted inherit the formatting of the
+    nearest preceding source character (or the next character at paragraph
+    start). If a rewrite reorders formatting runs, fall back safely rather
+    than emitting text in the wrong order.
+    """
+    runs = paragraph.runs
+    if not runs:
         paragraph.add_run(text)
+        return
+
+    original = "".join(run.text for run in runs)
+    if original == text:
+        return
+
+    # Run text containing tabs or line breaks has special OOXML semantics;
+    # leave that uncommon case on the conservative legacy path.
+    if any("\\t" in run.text or "\\n" in run.text or "\\r" in run.text for run in runs):
+        runs[0].text = text
+        for run in runs[1:]:
+            run.text = ""
+        return
+
+    char_runs: list[int] = []
+    for index, run in enumerate(runs):
+        char_runs.extend([index] * len(run.text))
+
+    matcher = SequenceMatcher(a=original, b=text, autojunk=False)
+    assigned: list[int] = []
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            assigned.extend(char_runs[i1:i2])
+        elif tag in {"replace", "insert"}:
+            if i1 > 0:
+                style_index = char_runs[i1 - 1]
+            elif i2 > i1:
+                style_index = char_runs[i1]
+            elif char_runs:
+                style_index = char_runs[0]
+            else:
+                style_index = 0
+            assigned.extend([style_index] * (j2 - j1))
+        # Deleted source characters intentionally contribute no output.
+
+    if len(assigned) != len(text) or any(
+        left > right for left, right in zip(assigned, assigned[1:])
+    ):
+        runs[0].text = text
+        for run in runs[1:]:
+            run.text = ""
+        return
+
+    buckets = [ [] for _ in runs ]
+    for character, run_index in zip(text, assigned):
+        buckets[run_index].append(character)
+    for run, characters in zip(runs, buckets):
+        run.text = "".join(characters)
 
 
 def _docx_from_states(job: Job) -> bytes:
