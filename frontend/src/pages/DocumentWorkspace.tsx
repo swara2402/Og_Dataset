@@ -47,6 +47,7 @@ export default function DocumentWorkspace() {
     getProcessingStatus,
     getProcessingResults,
     reviewParagraph,
+    reviewHybridProposal,
     analyzeParagraph,
     exportDocument,
     isConnected,
@@ -64,6 +65,7 @@ export default function DocumentWorkspace() {
   const [useLocalOllama, setUseLocalOllama] = useState(false);
   const [useSpacyContext, setUseSpacyContext] = useState(false);
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
+  const [hybridDecisions, setHybridDecisions] = useState<Record<string, 'accepted' | 'rejected'>>({});
 
   const loadJob = useCallback(
     async (id: string) => {
@@ -231,6 +233,24 @@ export default function DocumentWorkspace() {
       setHybridResult(response);
     }
     setHybridLoading(false);
+  };
+
+  const handleHybridReview = async (
+    proposal: HybridAnalysisResponse['proposals'][number],
+    action: 'accept' | 'reject'
+  ) => {
+    if (!file?.jobId) return;
+    const response = await reviewHybridProposal(file.jobId, proposal, action);
+    if (!response) {
+      setError(`Could not ${action} this hybrid suggestion. It may be stale or have failed protected-content validation.`);
+      return;
+    }
+    setHybridDecisions((current) => ({
+      ...current,
+      [proposal.proposal_id]: action === 'accept' ? 'accepted' : 'rejected',
+    }));
+    const refreshed = await getProcessingResults(file.jobId);
+    if (refreshed) setResults(refreshed);
   };
 
   const handleCopyProposal = async (proposal: HybridAnalysisResponse['proposals'][number]) => {
@@ -553,9 +573,18 @@ export default function DocumentWorkspace() {
                               <p className="text-sm leading-relaxed text-neutral-500 line-through">{proposal.original_text}</p>
                               <p className="mt-2 text-sm leading-relaxed text-neutral-800 dark:text-neutral-100">{proposal.suggested_text}</p>
                               {proposal.explanation && <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{proposal.explanation}</p>}
-                              <button onClick={() => void handleCopyProposal(proposal)} className="btn-secondary mt-3 inline-flex items-center gap-2">
-                                <FileText size={14} /> {copiedProposalId === proposal.proposal_id ? 'Copied' : 'Copy suggestion'}
-                              </button>
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                <button onClick={() => void handleHybridReview(proposal, 'accept')} disabled={!!hybridDecisions[proposal.proposal_id]} className="btn-primary inline-flex items-center gap-2">
+                                  <ThumbsUp size={14} /> Accept
+                                </button>
+                                <button onClick={() => void handleHybridReview(proposal, 'reject')} disabled={!!hybridDecisions[proposal.proposal_id]} className="btn-secondary inline-flex items-center gap-2">
+                                  <X size={14} /> Reject
+                                </button>
+                                <button onClick={() => void handleCopyProposal(proposal)} className="btn-secondary inline-flex items-center gap-2">
+                                  <FileText size={14} /> {copiedProposalId === proposal.proposal_id ? 'Copied' : 'Copy'}
+                                </button>
+                                {hybridDecisions[proposal.proposal_id] && <span className="text-xs font-medium capitalize text-neutral-600 dark:text-neutral-300">Decision saved: {hybridDecisions[proposal.proposal_id]}</span>}
+                              </div>
                             </div>
                           ))}
                           <p className="text-xs text-neutral-500">These are review-only proposals. Copy a suggestion into your own revision after checking meaning, citations, and technical accuracy.</p>
