@@ -47,7 +47,7 @@ def load_patterns(path: Path) -> list[dict[str, Any]]:
         key = (
             item["discipline"].casefold(),
             item["section"],
-            re.sub(r"\\s+", " ", item["pattern_name"]).strip().casefold(),
+            re.sub(r"\s+", " ", item["pattern_name"]).strip().casefold(),
         )
         if key in keys:
             raise ValueError(f"Line {line_no}: duplicate pattern for discipline and section")
@@ -76,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.reviewed_output is not None:
         args.reviewed_output.parent.mkdir(parents=True, exist_ok=True)
         args.reviewed_output.write_text(
-            "".join(json.dumps(item, ensure_ascii=False) + "\\n" for item in reviewed),
+            "".join(json.dumps(item, ensure_ascii=False) + "\n" for item in reviewed),
             encoding="utf-8",
         )
         report["reviewed_output"] = str(args.reviewed_output)
