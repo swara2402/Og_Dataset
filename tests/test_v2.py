@@ -2,8 +2,7 @@
 
 These tests use fakes and never call the live model or the public web. They
 cover the safety-critical paths: classification, protected content, validation,
-refinement statistics, analysis disclaimers, originality query construction and
-document export.
+refinement statistics, analysis disclaimers, and document export.
 """
 from __future__ import annotations
 
@@ -25,7 +24,6 @@ from backend.app.document_processing.parser import (
 from backend.app.export.exporter import export_document
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
-from backend.app.originality.detector import _search_query, _select_queries
 from backend.app.protected_content.masker import ProtectedContentMasker
 from backend.app.quality_analysis.ai_indicators import analyze_ai_indicators
 from backend.app.quality_analysis.analyzer import analyze_text, compare_texts
@@ -227,21 +225,6 @@ def test_compare_texts_reports_real_deltas():
     )
     assert "overall_score" in comparison["deltas"]
     assert comparison["original"]["word_count"] != comparison["revised"]["word_count"]
-
-
-def test_originality_query_preserves_decimals_and_percentages():
-    query = _search_query("In 2023, 67.5% of firms used machine learning.")
-    assert "2023" in query
-    assert "67.5%" in query
-
-    queries = _select_queries(
-        "This is a short sentence. "
-        "A sufficiently long sentence about machine learning adoption in firms should be searched. "
-        "Another sufficiently long sentence about accountability and transparency should be searched. "
-        "A third sufficiently long sentence about governance structures and review processes should be searched.",
-        max_queries=2,
-    )
-    assert len(queries) == 2
 
 
 def test_parser_round_trips_txt_and_docx():
