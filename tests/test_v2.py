@@ -471,6 +471,21 @@ def test_hybrid_proposal_review_persists_acceptance_and_rejects_protected_change
     job_store.create(accepted_job)
     accepted_state = accepted_job.paragraphs[0]
     current = accepted_state.current_text
+    with pytest.raises(HTTPException) as stale_exc:
+        asyncio.run(
+            router.review_hybrid_proposal(
+                accepted_job.job_id,
+                HybridProposalReviewRequest(
+                    paragraph_id="hybrid-p1",
+                    proposal_id="proposal-stale",
+                    original_text="An outdated paragraph snapshot.",
+                    suggested_text="A stale alternative paragraph.",
+                    source_engine="rule_engine",
+                    action="accept",
+                ),
+            )
+        )
+    assert stale_exc.value.status_code == 409
     accepted = asyncio.run(
         router.review_hybrid_proposal(
             accepted_job.job_id,
