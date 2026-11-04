@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     # high-entropy bearer tokens before exposing the API beyond localhost.
     api_tokens: str = Field(default="", validation_alias="OG_API_TOKENS")
     api_auth_required: bool = Field(default=False, validation_alias="OG_API_AUTH_REQUIRED")
+    api_admin_users: str = Field(default="", validation_alias="OG_API_ADMIN_USERS")
     # Per-owner + direct-client-IP request budget; shared gateways must add distributed limits.
     api_rate_limit_per_minute: int = Field(default=120, validation_alias="OG_API_RATE_LIMIT_PER_MINUTE")
 
