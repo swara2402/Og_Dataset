@@ -60,7 +60,7 @@ def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> None:
 
     # Run text containing tabs or line breaks has special OOXML semantics;
     # leave that uncommon case on the conservative legacy path.
-    if any("\\t" in run.text or "\\n" in run.text or "\\r" in run.text for run in runs):
+    if any("\t" in run.text or "\n" in run.text or "\r" in run.text for run in runs):
         runs[0].text = text
         for run in runs[1:]:
             run.text = ""
