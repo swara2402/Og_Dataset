@@ -40,6 +40,17 @@ def test_local_mechanical_issues_receive_only_minimal_corrections():
     assert edit["requires_human_review"] is True
 
 
+def test_sentence_spacing_preserves_common_abbreviations_and_decimals():
+    engine = HumanisationEngine(Settings())
+    original = "For example, e.g.This value is 3.14 and i.e.Results are stable."
+    profile = assess_editing_needs(original)
+    result = engine._apply_rules_to_text(original, profile, paragraph_type="body")
+    assert "e.g. This" in result["revised_text"]
+    assert "i.e. Results" in result["revised_text"]
+    assert "3.14" in result["revised_text"]
+    assert "e. g." not in result["revised_text"]
+
+
 def test_non_function_word_repetition_is_flagged_not_replaced():
     engine = HumanisationEngine(Settings())
     original = "The model model processes input."
