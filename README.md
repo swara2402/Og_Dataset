@@ -5,8 +5,10 @@ deterministic and rule-based: it reads the complete document, applies only
 small, explainable corrections, and leaves good text unchanged. The editor does
 not require Ollama, an external LLM, or a model API.
 
-The canonical rules, adaptive policy, examples, schema, and academic reference
-profile are maintained in [`Og_Dataset/`](./Og_Dataset/). The backend reads the
+The canonical rules, adaptive policy, examples, schemas, profiles, and preservation
+policies are maintained in [`knowledge_base/`](./knowledge_base/). The historical
+`Og_Dataset` gitlink is not used by runtime processing because this branch does not
+contain a usable `.gitmodules` remote mapping. The backend reads the
 dataset files at startup and refreshes them for each document job. Dataset
 examples still marked `draft` are reference material only; they are not treated
 as approved rewrite pairs.
@@ -38,6 +40,10 @@ Requirements: Python 3.12+ and Node.js 18+.
 
 ```bash
 python3 -m pip install -r requirements.txt
+# Optional: install spaCy for local linguistic context analysis
+python3 -m pip install -r requirements-nlp.txt
+# Optional: download a spaCy language model separately when needed
+# python3 -m spacy download en_core_web_sm
 cd frontend
 npm install
 npm run build
@@ -66,7 +72,7 @@ Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 
 ```bash
 python3 -m pytest -q
-python3 Og_Dataset/scripts/validate_dataset.py Og_Dataset/datasets/examples.jsonl
+python3 scripts/validate_dataset.py
 ```
 
 The tests use local fixtures and do not call Ollama or the public web.
@@ -87,6 +93,10 @@ The tests use local fixtures and do not call Ollama or the public web.
 
 ## Dataset updates
 
+Edit only `knowledge_base/` for rules, profiles, schemas, examples and policies.
+Run `python3 scripts/validate_dataset.py` before committing dataset changes.
+Examples labelled `draft` are never used as approved training or rewriting pairs.
+
 Update the canonical `Og_Dataset/` files from the upstream repository. The
 backend loads rules and policy from that directory; `backend/app/rules/`,
 `backend/app/datasets/`, and root `rules/` are synchronized compatibility
@@ -103,5 +113,7 @@ another rule set.
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
 - Jobs are held in memory and disappear when the backend restarts.
+- The Ollama adapter is opt-in, requires a locally running Ollama service and an explicitly configured model, and is never called by default.
+- The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
 - Only five synthetic, draft examples are currently provided; there are no
   verified human revision pairs to support broad automatic rewriting.
