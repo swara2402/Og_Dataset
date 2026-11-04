@@ -198,7 +198,7 @@ another rule set.
   embedded tables. DOCX preserves document structure and paragraph styles but
   can simplify complex inline formatting and floating objects.
 - Jobs and review decisions are persisted in a local SQLite database. API-level owner checks prevent one configured token user from accessing another user's job through the application, but all records still share the same database and host filesystem. This is not OS-level tenant isolation or per-user encryption. Protect database, upload and export directories with restrictive filesystem permissions, backups and host access controls before multi-user use.
-- The application contains no Ollama integration. Optional spaCy analysis is local and never generates replacement text.
+- Ollama, hosted model gateway code and the legacy LLM-based humanizer have been removed. Optional spaCy analysis is local and never generates replacement text.
 - The spaCy provider is opt-in, does not download language models, and provides context observations rather than rewriting text.
 - Only five synthetic, draft examples are currently provided; there are no
   verified human revision pairs to support broad automatic rewriting.
