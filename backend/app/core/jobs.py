@@ -312,7 +312,12 @@ class SQLiteJobStore(JobStore):
         self._jobs = {}
         configured = db_path or os.getenv("OG_DATASET_DB_PATH")
         self.db_path = Path(configured) if configured else Path(__file__).resolve().parents[2] / "data" / "jobs.sqlite3"
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            self.db_path.parent.chmod(0o700)
+        except OSError:
+            # Some filesystems do not support POSIX permission changes.
+            pass
         self._sqlite3 = sqlite3
         with self._connect() as connection:
             connection.execute(
@@ -322,6 +327,10 @@ class SQLiteJobStore(JobStore):
                 "SELECT payload FROM jobs ORDER BY created_at DESC LIMIT ?", (self.max_jobs,)
             ).fetchall()
             all_rows = connection.execute("SELECT payload FROM jobs").fetchall()
+        try:
+            self.db_path.chmod(0o600)
+        except OSError:
+            pass
         for (payload,) in all_rows:
             try:
                 job = self._decode(payload)
