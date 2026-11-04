@@ -359,6 +359,7 @@ interface APIContextType {
     paragraphId: string,
     action: 'accept' | 'reject'
   ) => Promise<ReviewResponse | null>;
+  restoreVersion: (jobId: string, paragraphId: string, version: number) => Promise<ReviewResponse | null>;
   reviewHybridProposal: (
     jobId: string,
     proposal: HybridProposal,
@@ -573,6 +574,22 @@ export function APIProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const restoreVersion = useCallback(
+    async (jobId: string, paragraphId: string, version: number): Promise<ReviewResponse | null> => {
+      try {
+        const response = await api.post<ReviewResponse>(
+          '/processing/' + jobId + '/restore-version',
+          { paragraph_id: paragraphId, version }
+        );
+        return response.data;
+      } catch (error) {
+        console.error('Could not restore paragraph version:', extractError(error));
+        return null;
+      }
+    },
+    []
+  );
+
   const reviewHybridProposal = useCallback(
     async (
       jobId: string,
@@ -680,6 +697,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     cancelProcessing,
     refineParagraph,
     reviewParagraph,
+    restoreVersion,
     reviewHybridProposal,
     getAnalysisReport,
     runOriginality,
