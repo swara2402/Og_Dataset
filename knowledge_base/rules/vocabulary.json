@@ -1,0 +1,57 @@
+{
+  "version": "1.1.0",
+  "rule_set": "vocabulary",
+  "rules": [
+    {
+      "id": "WORDCHOICE-001",
+      "category": "word_choice",
+      "name": "Use a more precise contextual word when needed",
+      "guidance": "Replace a word only when the alternative is a closer fit for the intended meaning, discipline, and sentence context. Prefer familiar, precise academic language over decorative or unnecessarily complex vocabulary.",
+      "apply_when": [
+        "A word is vague, inaccurate, awkward, or inconsistent with the concept it describes."
+      ],
+      "do_not_apply_when": [
+        "The original word is already accurate.",
+        "The proposed alternative only changes style without improving meaning or clarity.",
+        "The alternative changes technical meaning, certainty, emphasis, or scope."
+      ],
+      "preservation": [
+        "Do not perform synonym rotation.",
+        "Do not choose a synonym merely to make text look different.",
+        "Keep domain-specific terms when they are the correct terms."
+      ]
+    },
+    {
+      "id": "REPETITION-001",
+      "category": "repetition",
+      "name": "Reduce distracting local repetition",
+      "guidance": "When the same non-technical word is repeated close together and the repetition distracts from reading, consider a contextually accurate alternative or remove a genuinely redundant occurrence.",
+      "apply_when": [
+        "A non-essential word or phrase is repeated nearby without adding emphasis or precision."
+      ],
+      "do_not_apply_when": [
+        "Repetition is needed for clarity, terminology consistency, emphasis, or formal structure.",
+        "A synonym would be less precise."
+      ],
+      "preservation": [
+        "Never vary a technical term solely to avoid repetition.",
+        "Retain all distinct information."
+      ]
+    },
+    {
+      "id": "TERMINOLOGY-001",
+      "category": "terminology",
+      "name": "Maintain consistent technical terminology",
+      "guidance": "Use the same term for the same concept throughout a document unless the source intentionally distinguishes concepts.",
+      "apply_when": [
+        "A concept is named inconsistently and equivalence is certain."
+      ],
+      "do_not_apply_when": [
+        "Terms may represent different components, methods, or metrics."
+      ],
+      "preservation": [
+        "Never replace a domain term with a loose synonym."
+      ]
+    }
+  ]
+}
