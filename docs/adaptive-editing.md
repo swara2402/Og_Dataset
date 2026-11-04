@@ -1,10 +1,11 @@
 # OG Dataset integration
 
-`Og_Dataset/` is the canonical runtime source for the master rules, editing
-policy, JSONL examples, schema, and exploratory academic reference profile.
-The backend reads these files at startup and reloads them for every document
-job. Missing or malformed source data is reported as an error; the application
-does not silently use a stale fallback.
+The tracked runtime source is the root `rules/` directory, the examples at
+`backend/app/datasets/examples.jsonl`, and the schema at
+`backend/app/schemas/example.schema.json`. The backend reloads these files for
+each document job. An optional external dataset checkout may be selected with
+`OG_DATASET_DIR`; required files are validated at load time. The historical
+nested `Og_Dataset` gitlink is not used by the web pipeline.
 
 ## Editing behavior
 

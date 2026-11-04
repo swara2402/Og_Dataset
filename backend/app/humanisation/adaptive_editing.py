@@ -11,12 +11,12 @@ from typing import Any, Dict, List
 from jsonschema import Draft202012Validator, SchemaError
 
 
-_DATASET_ROOT = Path(
-    os.environ.get(
-        "OG_DATASET_DIR",
-        str(Path(__file__).resolve().parents[3] / "Og_Dataset"),
-    )
-).expanduser()
+# The repository currently carries its runtime dataset in tracked, in-repo files.
+# The historical nested Og_Dataset gitlink is not a usable source: it points to
+# an older snapshot and has no .gitmodules URL. An explicit OG_DATASET_DIR still
+# lets a developer supply a separately maintained dataset checkout.
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_DATASET_ROOT = Path(os.environ["OG_DATASET_DIR"]).expanduser() if os.environ.get("OG_DATASET_DIR") else _PROJECT_ROOT
 _SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 _REPEAT_WORD_RE = re.compile(r"\b([A-Za-z]{2,})[ \t]+\1\b", re.I)
 _SAFE_REPEAT_WORDS = {"a", "an", "and", "in", "of", "the", "to"}
@@ -58,11 +58,18 @@ def load_editing_policy() -> Dict[str, Any]:
 
 
 def load_examples() -> List[Dict[str, Any]]:
-    path = _DATASET_ROOT / "datasets" / "examples.jsonl"
+    candidates = (
+        _DATASET_ROOT / "datasets" / "examples.jsonl",
+        _DATASET_ROOT / "backend" / "app" / "datasets" / "examples.jsonl",
+    )
+    path = next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
-        raise RuntimeError(f"OG Dataset examples are unavailable: {path}") from exc
+        raise RuntimeError(
+            "OG Dataset examples are unavailable. Checked: "
+            + ", ".join(str(candidate) for candidate in candidates)
+        ) from exc
     examples: List[Dict[str, Any]] = []
     seen_ids = set()
     for line_number, line in enumerate(lines, start=1):
@@ -95,16 +102,27 @@ def load_examples() -> List[Dict[str, Any]]:
 
 def load_dataset() -> Dict[str, Any]:
     """Read the repository source at runtime so local dataset updates take effect."""
+    # A style profile is optional reference material, never a runtime
+    # requirement. The editor must remain available when no verified profile
+    # corpus has been supplied.
     profile_path = _DATASET_ROOT / "docs" / "reference-writing-profile.md"
-    try:
-        profile = profile_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise RuntimeError(f"OG Dataset reference profile is unavailable: {profile_path}") from exc
+    profile = profile_path.read_text(encoding="utf-8") if profile_path.is_file() else ""
     rules = load_quality_rules()
     policy = load_editing_policy()
     examples = load_examples()
     rules_data = _read_json("rules/master_rules.json")
-    schema = _read_json("schemas/example.schema.json")
+    schema_candidates = (
+        _DATASET_ROOT / "schemas" / "example.schema.json",
+        _DATASET_ROOT / "backend" / "app" / "schemas" / "example.schema.json",
+    )
+    schema_path = next(
+        (candidate for candidate in schema_candidates if candidate.is_file()),
+        schema_candidates[0],
+    )
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"OG Dataset example schema is unavailable or invalid: {schema_path}") from exc
     try:
         Draft202012Validator.check_schema(schema)
     except SchemaError as exc:

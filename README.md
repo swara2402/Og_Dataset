@@ -5,11 +5,13 @@ deterministic and rule-based: it reads the complete document, applies only
 small, explainable corrections, and leaves good text unchanged. The editor does
 not require Ollama, an external LLM, or a model API.
 
-The canonical rules, adaptive policy, examples, schema, and academic reference
-profile are maintained in [`Og_Dataset/`](./Og_Dataset/). The backend reads the
-dataset files at startup and refreshes them for each document job. Dataset
-examples still marked `draft` are reference material only; they are not treated
-as approved rewrite pairs.
+The runtime dataset is stored in tracked repository files: rules in
+`rules/`, examples in `backend/app/datasets/examples.jsonl`, and the example
+schema in `backend/app/schemas/`. The backend reloads these files for each
+document job. The historical nested `Og_Dataset` gitlink is not a runtime
+dependency. Examples marked `draft` are validation fixtures only; they are
+never treated as approved rewrite pairs. An external dataset checkout can be
+selected explicitly with `OG_DATASET_DIR`.
 
 ## Features
 
@@ -66,7 +68,7 @@ Open <http://127.0.0.1:5173>. Interactive API documentation is available at
 
 ```bash
 python3 -m pytest -q
-python3 Og_Dataset/scripts/validate_dataset.py Og_Dataset/datasets/examples.jsonl
+python3 -m pytest -q
 ```
 
 The tests use local fixtures and do not call Ollama or the public web.
@@ -87,12 +89,14 @@ The tests use local fixtures and do not call Ollama or the public web.
 
 ## Dataset updates
 
-Update the canonical `Og_Dataset/` files from the upstream repository. The
-backend loads rules and policy from that directory; `backend/app/rules/`,
-`backend/app/datasets/`, and root `rules/` are synchronized compatibility
-copies, not independent sources of editing behavior. Invalid or missing
-canonical dataset files fail explicitly instead of silently falling back to
-another rule set.
+Update the tracked runtime files together: `rules/master_rules.json`,
+`rules/adaptive_editing_policy.json`, `backend/app/datasets/examples.jsonl`,
+and `backend/app/schemas/example.schema.json`. Keep the duplicate rules under
+`backend/app/rules/` synchronized for compatibility. If a separate dataset
+checkout is supplied through `OG_DATASET_DIR`, it must contain matching
+`rules/`, `datasets/`, and `schemas/` files. Missing required files fail
+explicitly. A reference-writing profile is optional and is not inferred from
+detector results.
 
 ## Limitations
 

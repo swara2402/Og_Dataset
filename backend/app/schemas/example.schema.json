@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OG Dataset Editing Example",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "example_id", "source", "document_type", "authorship_status",
+    "original_text", "edited_text", "edit_scope", "intervention_level",
+    "rules_applied", "edit_rationale", "change_summary",
+    "protected_elements", "meaning_review", "review_status"
+  ],
+  "properties": {
+    "example_id": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "required": ["kind", "reference"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["synthetic", "user_provided_document", "licensed_corpus", "public_domain", "other"]},
+        "reference": {"type": "string"},
+        "location": {"type": ["string", "null"]}
+      }
+    },
+    "document_type": {"enum": ["academic", "technical", "professional", "casual", "general", "unknown"]},
+    "authorship_status": {"enum": ["human_authored_verified", "ai_assisted_disclosed", "ai_generated_disclosed", "synthetic_example", "unknown"]},
+    "original_text": {"type": "string", "minLength": 1},
+    "edited_text": {"type": "string", "minLength": 1},
+    "edit_scope": {"enum": ["none", "word", "phrase", "sentence", "paragraph"]},
+    "intervention_level": {"enum": ["none", "minimal", "moderate", "substantial"]},
+    "rules_applied": {"type": "array", "items": {"type": "string"}},
+    "edit_rationale": {"type": "string"},
+    "change_summary": {"type": "array", "items": {"type": "string"}},
+    "protected_elements": {"type": "array", "items": {"type": "string"}},
+    "meaning_review": {"enum": ["not_reviewed", "preserved", "changed", "uncertain"]},
+    "review_status": {"enum": ["draft", "human_reviewed", "approved", "rejected"]},
+    "reviewer_notes": {"type": ["string", "null"]}
+  }
+}

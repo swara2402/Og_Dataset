@@ -99,7 +99,9 @@ def test_latest_og_dataset_rules_policy_examples_and_profile_load():
     assert {"GRAMMAR-001", "WORDCHOICE-001", "EVIDENCE-001"} <= identifiers
     assert len(dataset["examples"]) == 5
     assert any(example["edit_scope"] == "none" for example in dataset["examples"])
-    assert "AgriSense" in dataset["reference_profile"]
+    # No verified reference-writing profile is bundled in this checkout.
+    # The profile is optional and must not prevent the rule engine from starting.
+    assert dataset["reference_profile"] == ""
     assert dataset["policy"]["default_strategy"] == "minimal_edit"
 
 
