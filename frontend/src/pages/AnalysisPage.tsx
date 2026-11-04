@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
-  BarChart3,
   CheckCircle,
   Clock,
   Copy,
@@ -152,7 +151,7 @@ export default function AnalysisPage() {
     );
   }
 
-  const { writing_quality, ai_indicators, validation, statistics } = analysis;
+  const { writing_quality, validation, statistics } = analysis;
   const revisedMetrics = writing_quality.revised;
 
   return (
@@ -221,11 +220,6 @@ export default function AnalysisPage() {
               <p className="text-2xl font-bold">{validation.checked_paragraphs}</p>
               <p className="text-xs text-neutral-500">paragraphs checked</p>
             </div>
-            <div className="card">
-              <div className="mb-2 flex items-center gap-2 text-sm text-neutral-500"><BarChart3 size={16} /> AI detection</div>
-              <p className="text-2xl font-bold">Not connected</p>
-              <p className="text-xs text-neutral-500">No authorship verdict is generated</p>
-            </div>
           </div>
 
           <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
@@ -273,7 +267,7 @@ export default function AnalysisPage() {
                     </div>
                   </section>
 
-                  <section className="grid gap-4 md:grid-cols-2">
+                  <section>
                     <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
                       <h3 className="mb-3 font-semibold">Protected-content validation</h3>
                       <ul className="space-y-2 text-sm">
@@ -283,26 +277,6 @@ export default function AnalysisPage() {
                         <li className="flex items-center justify-between"><span>Critical issues</span><span className={validation.critical_issues.length ? 'text-red-500' : 'text-green-500'}>{validation.critical_issues.length}</span></li>
                         <li className="flex items-center justify-between"><span>Warnings</span><span className={validation.warnings.length ? 'text-yellow-500' : 'text-green-500'}>{validation.warnings.length}</span></li>
                       </ul>
-                    </div>
-
-                    <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
-                      <h3 className="mb-2 font-semibold">Style observations (not AI detection)</h3>
-                      <p className="mb-3 text-sm text-neutral-500 dark:text-neutral-400">{ai_indicators.detector_note}</p>
-                      <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-300">
-                        These observations point to wording or structure that an author may want to review. They do not identify who wrote the text.
-                      </p>
-                      <div className="space-y-3">
-                        {ai_indicators.indicators.filter((indicator) => indicator.evidence.length > 0).slice(0, 6).map((indicator) => (
-                          <div key={indicator.id} className="border-b border-neutral-100 pb-2 last:border-0 last:pb-0 dark:border-neutral-700">
-                            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{indicator.label}</p>
-                            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{indicator.description}</p>
-                            <p className="mt-1 text-xs text-neutral-500">Observed: {indicator.evidence.join(', ')}</p>
-                          </div>
-                        ))}
-                        {ai_indicators.indicators.every((indicator) => indicator.evidence.length === 0) && (
-                          <p className="text-sm text-neutral-500">No style observations to display.</p>
-                        )}
-                      </div>
                     </div>
                   </section>
 
