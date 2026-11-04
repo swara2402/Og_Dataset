@@ -10,6 +10,7 @@ import {
   FileText,
   Loader2,
   Search,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   XCircle,
