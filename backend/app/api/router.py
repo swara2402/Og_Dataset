@@ -538,15 +538,11 @@ async def review_paragraph(job_id: str, request: ReviewRequest) -> Dict[str, Any
     if request.action == "accept":
         if state.review_status == "rejected":
             proposal = next(
-                (
-                    version for version in reversed(state.versions)
-                    if version.source != "original"
-                    and not version.source.startswith("hybrid-rejected:")
-                ),
+                (version for version in reversed(state.versions) if version.source != "original"),
                 None,
             )
-            if proposal is None:
-                raise HTTPException(status_code=409, detail="No proposed change is available.")
+            if proposal is None or proposal.source.startswith("hybrid-rejected:"):
+                raise HTTPException(status_code=409, detail="No active proposed change is available. Run analysis again.")
             state.current_text = proposal.text
             state.current_masked_text = proposal.masked_text
             state.validation = proposal.validation
