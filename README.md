@@ -97,8 +97,8 @@ For backward compatibility, when `OG_API_TOKENS` is empty and
 `OG_API_AUTH_REQUIRED` is false, the API runs in unauthenticated
 `local` mode. This mode is intended only for a trusted machine with the
 backend bound to `127.0.0.1` as shown above. Set
-`OG_API_AUTH_REQUIRED=true` in any deployment environment so startup
-requests fail closed if tokens are missing. Do not expose the API publicly
+`OG_API_AUTH_REQUIRED=true` in any deployment environment so API requests
+fail closed with `503` if tokens are missing. Do not expose the API publicly
 without TLS termination, strong unique secrets, rate limiting, protected
 database and upload storage, and operational monitoring.
 
