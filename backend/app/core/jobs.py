@@ -320,14 +320,12 @@ class SQLiteJobStore(JobStore):
             rows = connection.execute(
                 "SELECT payload FROM jobs ORDER BY created_at DESC LIMIT ?", (self.max_jobs,)
             ).fetchall()
-            interrupted = connection.execute(
-                "SELECT payload FROM jobs WHERE payload LIKE '%\\\"status\\\":\\\"processing\\\"%' "
-                "OR payload LIKE '%\\\"status\\\":\\\"queued\\\"%'"
-            ).fetchall()
-        for (payload,) in interrupted:
+            all_rows = connection.execute("SELECT payload FROM jobs").fetchall()
+        for (payload,) in all_rows:
             try:
-                job = self._recover_interrupted(self._decode(payload))
-                self.save(job)
+                job = self._decode(payload)
+                if job.status in {"queued", "processing"}:
+                    self.save(self._recover_interrupted(job))
             except Exception:
                 continue
         for (payload,) in rows:
