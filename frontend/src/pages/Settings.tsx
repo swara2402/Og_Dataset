@@ -215,7 +215,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2 border-t border-neutral-200 pt-3 dark:border-neutral-700">
                 <Shield size={16} className="text-green-600" />
-                <span className="text-neutral-500">{settings?.privacy.originality_note}</span>
+                <span className="text-neutral-500">No public-web search or hosted model calls are available in the offline core.</span>
               </div>
             </div>
           </section>
