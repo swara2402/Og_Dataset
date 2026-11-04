@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
-  ArrowUpRight,
   BarChart3,
-  BookOpen,
   CheckCircle,
   Clock,
   Copy,
@@ -12,7 +10,6 @@ import {
   FileText,
   Loader2,
   Search,
-  ShieldCheck,
   Sparkles,
   TrendingUp,
   XCircle,
@@ -20,7 +17,6 @@ import {
 import {
   AnalysisReport,
   JobSummary,
-  OriginalityReport,
   QualityMetrics,
   useAPI,
 } from '../contexts/APIContext';
@@ -60,17 +56,14 @@ function formatDelta(value: number | undefined) {
 export default function AnalysisPage() {
   const { jobId } = useParams<{ jobId?: string }>();
   const navigate = useNavigate();
-  const { listJobs, getAnalysisReport, runOriginality, errorMessage } = useAPI();
+  const { listJobs, getAnalysisReport } = useAPI();
 
   const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'originality' | 'recommendations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'recommendations'>('overview');
   const [copied, setCopied] = useState(false);
-  const [searchConfirmed, setSearchConfirmed] = useState(false);
-  const [maxSentences, setMaxSentences] = useState(6);
-  const [searching, setSearching] = useState(false);
 
   const load = useCallback(
     async (targetId: string) => {
@@ -129,27 +122,6 @@ export default function AnalysisPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleOriginality = async () => {
-    if (!analysis || !searchConfirmed) return;
-    setSearching(true);
-    setError(null);
-    try {
-      const report: OriginalityReport | null = await runOriginality({
-        jobId: analysis.job_id,
-        maxSentences,
-        fetchPages: true,
-      });
-      if (!report) {
-        setError('Originality search failed. Check your network connection and try again.');
-        return;
-      }
-      setAnalysis((current) => (current ? { ...current, originality: report } : current));
-    } catch (caught) {
-      setError(errorMessage(caught));
-    } finally {
-      setSearching(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -164,7 +136,7 @@ export default function AnalysisPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Analysis</h1>
-          <p className="text-neutral-600 dark:text-neutral-400">Writing quality, protected-content validation and originality reports.</p>
+          <p className="text-neutral-600 dark:text-neutral-400">Writing quality and protected-content validation.</p>
         </div>
         {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">{error}</div>}
         <div className="card flex flex-col items-center py-16 text-center">
@@ -179,7 +151,7 @@ export default function AnalysisPage() {
     );
   }
 
-  const { writing_quality, ai_indicators, validation, originality, statistics } = analysis;
+  const { writing_quality, ai_indicators, validation, statistics } = analysis;
   const revisedMetrics = writing_quality.revised;
 
   return (
@@ -257,7 +229,7 @@ export default function AnalysisPage() {
 
           <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
             <div className="flex border-b border-neutral-200 dark:border-neutral-700">
-              {(['overview', 'originality', 'recommendations'] as const).map((tab) => (
+              {(['overview', 'recommendations'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -344,118 +316,12 @@ export default function AnalysisPage() {
                 </>
               )}
 
-              {activeTab === 'originality' && (
-                <>
-                  {!originality && (
-                    <section className="rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
-                      <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold"><Search size={20} /> Originality check</h2>
-                      <p className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
-                        This check sends only short sentence queries to a public web search provider. It never uploads the document.
-                        Results are candidate matches for manual review, not a definitive plagiarism percentage.
-                      </p>
-                      <ul className="mb-4 space-y-1 text-sm text-neutral-600 dark:text-neutral-400">
-                        <li>• Search provider: DuckDuckGo HTML endpoint</li>
-                        <li>• Queries per check: up to {Math.min(maxSentences, 6)} sentences (server limit)</li>
-                        <li>• Coverage is limited to publicly indexed search results</li>
-                      </ul>
-                      <label className="mb-4 flex items-start gap-2 text-sm">
-                        <input type="checkbox" checked={searchConfirmed} onChange={(event) => setSearchConfirmed(event.target.checked)} className="mt-1" />
-                        <span>I understand and want to send selected sentences to the public search provider.</span>
-                      </label>
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm text-neutral-500">Sentences</span>
-                          <input type="range" min={3} max={6} value={maxSentences} onChange={(event) => setMaxSentences(Number(event.target.value))} className="accent-primary-600" />
-                          <span className="w-6 text-sm">{maxSentences}</span>
-                        </div>
-                        <button onClick={handleOriginality} disabled={!searchConfirmed || searching} className="btn-primary inline-flex items-center gap-2">
-                          {searching ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-                          {searching ? 'Searching...' : 'Run originality check'}
-                        </button>
-                      </div>
-                    </section>
-                  )}
-
-                  {originality && (
-                    <>
-                      <div className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-700">
-                        <h3 className="mb-2 flex items-center gap-2 font-semibold"><ShieldCheck size={18} /> {originality.provider}</h3>
-                        <p className="mb-2 text-neutral-600 dark:text-neutral-400">{originality.summary}</p>
-                        <p className="text-neutral-500 dark:text-neutral-400">{originality.disclosure}</p>
-                        <p className="mt-2 text-xs text-neutral-500">{originality.scope}</p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700"><p className="text-xs text-neutral-500">Sentences searched</p><p className="text-xl font-bold">{originality.sentences_searched}</p></div>
-                        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700"><p className="text-xs text-neutral-500">Matched sources</p><p className="text-xl font-bold">{originality.statistics.matched_sources}</p></div>
-                        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700"><p className="text-xs text-neutral-500">Needs review</p><p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{originality.statistics.needs_manual_review}</p></div>
-                        <div className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700"><p className="text-xs text-neutral-500">Uncited quotations</p><p className="text-xl font-bold text-red-600 dark:text-red-400">{originality.statistics.uncited_quotations}</p></div>
-                      </div>
-
-                      <section>
-                        <h3 className="mb-3 font-semibold">Candidate matches</h3>
-                        {originality.matches.length === 0 && (
-                          <p className="rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                            No candidate matches above the comparison threshold. This only covers the sentences searched and the public results returned.
-                          </p>
-                        )}
-                        <div className="space-y-3">
-                          {originality.matches.map((match) => (
-                            <div key={match.id} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
-                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <BookOpen size={16} className="text-neutral-400" />
-                                  <span className="font-medium">{match.source_title || 'Untitled result'}</span>
-                                </div>
-                                <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                                  {(match.similarity * 100).toFixed(1)}% similarity
-                                </span>
-                              </div>
-                              <p className="mb-2 rounded bg-neutral-50 p-2 text-sm italic text-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-300">{match.matched_text}</p>
-                              <p className="mb-2 text-xs text-neutral-500">Your sentence: {match.query_sentence}</p>
-                              <div className="flex flex-wrap items-center gap-2 text-xs">
-                                <span className={`rounded-full px-2 py-0.5 ${match.classification === 'possible_plagiarism' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300'}`}>
-                                  {match.classification.replace(/_/g, ' ')}
-                                </span>
-                                {match.direct_quotation && <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">quotation</span>}
-                                {match.citation_found && <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">citation nearby</span>}
-                                {match.source_url && (
-                                  <a href={match.source_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary-600 hover:underline dark:text-primary-400">
-                                    Open source <ArrowUpRight size={12} />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-
-                      <section>
-                        <h3 className="mb-2 font-semibold">Searched queries</h3>
-                        <div className="space-y-1 text-xs text-neutral-500">
-                          {originality.searched_queries.map((queryItem, index) => (
-                            <p key={index}>#{queryItem.sentence_index + 1}: “{queryItem.query}” {queryItem.error ? `— error: ${queryItem.error}` : ''}</p>
-                          ))}
-                        </div>
-                      </section>
-
-                      <section className="rounded-lg bg-neutral-50 p-4 text-sm dark:bg-neutral-900/40">
-                        <h3 className="mb-2 font-semibold">Limitations</h3>
-                        <ul className="list-disc space-y-1 pl-5 text-neutral-500 dark:text-neutral-400">
-                          {originality.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
-                        </ul>
-                      </section>
-                    </>
-                  )}
-                </>
-              )}
-
               {activeTab === 'recommendations' && (
                 <section className="space-y-4">
                   <h2 className="text-lg font-semibold">Recommendations</h2>
                   {revisedMetrics.recommendations.length === 0 && validation.warnings.length === 0 && validation.critical_issues.length === 0 && (
                     <p className="rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                      No structural issues were detected. Review the revised text and any originality candidates manually before submission.
+                      No structural issues were detected. Review the revised text and citations before submission.
                     </p>
                   )}
                   {revisedMetrics.recommendations.map((recommendation, index) => (
