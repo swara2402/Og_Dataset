@@ -549,11 +549,20 @@ class RuleBasedEditingEngine:
         style: Optional[str] = None,
         pass_number: Optional[int] = None,
     ) -> ParagraphState:
+        if instruction and instruction.strip():
+            raise ValueError(
+                "Custom refinement instructions are not supported yet. "
+                "No text was changed; the current engine only applies conservative, "
+                "voice-preserving corrections."
+            )
+        if style not in (None, "preserve_voice"):
+            raise ValueError(
+                "This writing-style transformation is not implemented yet. "
+                "No text was changed; use the conservative voice-preserving mode."
+            )
         self._load_dataset()
         if state.paragraph_type != "body" or not state.eligible:
             raise RuntimeError("Only eligible body paragraphs can be refined.")
-        if instruction:
-            logger.info("User instruction is recorded; edits remain constrained by OG Dataset rules.")
         await self._process_state(job, state, pass_number or max(2, len(state.versions)))
         self._finalise_statistics(job)
         return state
