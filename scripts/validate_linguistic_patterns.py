@@ -47,7 +47,7 @@ def load_patterns(path: Path) -> list[dict[str, Any]]:
         key = (
             item["discipline"].casefold(),
             item["section"],
-            re.sub(r"\s+", " ", item["pattern_name"]).strip().casefold(),
+            re.sub(r"[^a-z0-9]+", " ", item["pattern_name"].casefold()).strip(),
         )
         if key in keys:
             raise ValueError(f"Line {line_no}: duplicate pattern for discipline and section")
