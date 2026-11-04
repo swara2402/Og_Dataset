@@ -146,7 +146,6 @@ class ParagraphClassifier:
             confidence = max(confidence, 0.55)
 
         return is_technical, confidence
-        return is_technical, confidence
     
     def _is_literature_review_paragraph(self, text: str) -> Tuple[bool, float]:
         """Determine if text is part of a literature review."""
