@@ -208,8 +208,15 @@ def assess_editing_needs(text: str) -> Dict[str, Any]:
     issues: List[str] = []
     if _REPEAT_WORD_RE.search(value):
         issues.append("accidental_repeated_word")
-    if re.search(r"[ \t]+[,.!?;:]", value) or re.search(
-        r"(?<!\d)[.!?;:,](?=[A-Za-z])", value
+    punctuation_probe = re.sub(r"\\b(?:e\\.g|i\\.e)\\.", "ABBREVIATION", value, flags=re.I)
+    punctuation_probe = re.sub(r"\\b(?:[A-Z]\\.){2,}", "INITIALISM", punctuation_probe)
+    missing_abbreviation_space = re.search(
+        r"\\b(?:e\\.g|i\\.e)\\.(?=[A-Za-z])", value, re.I
+    )
+    if (
+        re.search(r"[ \\t]+[,.!?;:]", value)
+        or missing_abbreviation_space
+        or re.search(r"(?<!\\d)[.!?;:,](?=[A-Za-z])", punctuation_probe)
     ):
         issues.append("punctuation_spacing")
     if re.search(r"[ \t]{2,}", value):
