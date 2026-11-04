@@ -176,8 +176,8 @@ class ProtectedContentMasker:
         
         # Secondary validation: verify all protected patterns still match
         for pattern_name, pattern in self.compiled_patterns.items():
-            original_matches = pattern.findall(original_text, re.I)
-            restored_matches = pattern.findall(restored, re.I)
+            original_matches = pattern.findall(original_text)
+            restored_matches = pattern.findall(restored)
             if original_matches != restored_matches:
                 return None, f"{pattern_name} integrity check failed"
         
