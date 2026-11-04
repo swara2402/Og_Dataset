@@ -9,6 +9,10 @@ if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   echo "Python 3.12+ is required. Install Python, then retry." >&2
   exit 1
 fi
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required for local readiness checks." >&2
+  exit 1
+fi
 if ! "$PYTHON_BIN" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)'; then
   echo "Python 3.12+ is required." >&2
   exit 1
