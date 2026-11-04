@@ -433,7 +433,6 @@ export function APIProvider({ children }: { children: ReactNode }) {
     category?: string;
     document_context?: string;
     include_nlp?: boolean;
-    include_local_llm?: boolean;
   }): Promise<HybridAnalysisResponse | null> => {
     try {
       const response = await api.post<HybridAnalysisResponse>('/analysis/paragraph', request, { timeout: 180000 });
