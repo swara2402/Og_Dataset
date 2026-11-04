@@ -160,6 +160,7 @@ python3 -m pytest -q
 python3 scripts/validate_dataset.py
 python3 scripts/validate_revision_pairs.py
 python3 scripts/validate_terminology.py
+python3 scripts/validate_linguistic_patterns.py
 python3 scripts/evaluate_preservation.py
 ```
 
