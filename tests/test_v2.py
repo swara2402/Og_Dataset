@@ -604,7 +604,7 @@ def test_upload_api_processes_full_document_and_exports_after_review(tmp_path):
 
             results = client.get(f"/api/v1/processing/{job_id}/results").json()
             assert len(results["results"]) == 4
-            assert results["statistics"]["dataset"]["version"] == "1.1.0"
+            assert results["statistics"]["dataset"]["version"] == "1.2.0"
             assert results["results"][1]["proposal"] == (
                 "The abstract reports 67% accuracy in 2023."
             )
