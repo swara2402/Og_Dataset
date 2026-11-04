@@ -122,6 +122,34 @@ def _docx_from_states(job: Job) -> bytes:
     return buffer.getvalue()
 
 
+def _docx_unapplied_edits(job: Job) -> list[str]:
+    """Return accepted DOCX edits that cannot safely be applied to the source XML."""
+    if job.file_type != "docx" or not job.original_bytes:
+        return []
+    document = DocxDocument(io.BytesIO(job.original_bytes))
+    revised = {state.id: state for state in job.paragraphs}
+    found: set[str] = set()
+    skipped: list[str] = []
+    for item in DocxParser.iter_all_elements(document, job.filename):
+        state = revised.get(item.id)
+        if state is None or state.review_status != "accepted" or state.current_text == state.original_text:
+            continue
+        found.add(state.id)
+        children = list(item.original_element._p.iterchildren())
+        if any(child.tag not in {qn("w:pPr"), qn("w:r")} for child in children):
+            skipped.append(state.id)
+            continue
+        if "".join(run.text for run in item.original_element.runs) != item.original_element.text:
+            skipped.append(state.id)
+    skipped.extend(
+        state.id for state in job.paragraphs
+        if state.review_status == "accepted"
+        and state.current_text != state.original_text
+        and state.id not in found
+    )
+    return skipped
+
+
 def _docx_bytes(job: Job) -> bytes:
     if job.file_type != "docx" or not job.original_bytes:
         return _docx_from_states(job)
@@ -273,6 +301,16 @@ def export_notes(job: Job, fmt: str) -> List[str]:
         )
         if not job.original_bytes:
             notes.append("Original DOCX is unavailable; a plain DOCX was generated instead.")
+        else:
+            skipped = _docx_unapplied_edits(job)
+            if skipped:
+                preview = ", ".join(skipped[:12])
+                remainder = f" (+{len(skipped) - 12} more)" if len(skipped) > 12 else ""
+                notes.append(
+                    f"WARNING: {len(skipped)} accepted edit(s) were not applied because their "
+                    f"paragraph XML contains unsupported inline content: {preview}{remainder}. "
+                    "Those source paragraphs were preserved unchanged; review them manually."
+                )
     if fmt.lstrip(".").lower() == "tex":
         notes.append(
             "LaTeX export splices accepted prose edits into the original source by exact offsets. "
