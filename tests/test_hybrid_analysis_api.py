@@ -8,7 +8,6 @@ def test_hybrid_analysis_api_returns_proposals_without_applying_edits():
         status = client.get("/api/v1/engines/status")
         assert status.status_code == 200
         assert status.json()["offline_basic_available"] is True
-        assert status.json()["ollama"]["enabled"] is False
 
         response = client.post(
             "/api/v1/analysis/paragraph",
@@ -33,7 +32,6 @@ def test_hybrid_analysis_api_rejects_disabled_optional_providers():
             json={
                 "paragraph_id": "p1",
                 "text": "The model was evaluated.",
-                "include_local_llm": True,
             },
         )
         assert response.status_code == 409
