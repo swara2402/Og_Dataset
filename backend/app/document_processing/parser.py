@@ -508,9 +508,9 @@ class LatexParser:
             return "equation"
         if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt)\}", value):
             return "code"
-        if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)", value):
+        if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)|\\begin\s*\{thebibliography\}", value):
             return "reference"
-        if re.search(r"\\(?:documentclass|usepackage|newcommand|renewcommand|begin\s*\{document\}|end\s*\{document\}|maketitle|author|date|label)\b", value):
+        if re.search(r"\\(?:documentclass|usepackage|newcommand|renewcommand|maketitle|author|date|label)\b|\\(?:begin|end)\s*\{document\}", value):
             return "front_matter"
         if re.search(r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|title)\*?\s*\{", value):
             return "heading"
