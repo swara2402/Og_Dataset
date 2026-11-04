@@ -123,3 +123,25 @@ def test_latex_export_refuses_invalid_or_non_body_source_edits(tmp_path):
     import pytest
     with pytest.raises(ValueError, match="Only prose blocks"):
         export_document(job, "tex", str(tmp_path))
+
+
+def test_latex_parser_protects_layout_graphics_and_inline_code_environments():
+    source = (
+        "\\documentclass{article}\n"
+        "\\begin{document}\n\n"
+        "A normal paragraph remains editable.\n\n"
+        "\\begin{figure}\n\\includegraphics{plot.pdf}\n\\caption{A result}\n\\end{figure}\n\n"
+        "\\begin{tabular}{cc}\na & b \\\\\nc & d\n\\end{tabular}\n\n"
+        "Inline source: \\verb|x = y| should remain protected.\n\n"
+        "\\begin{document}\n"
+    )
+    parsed = DocumentParser.parse_bytes(source.encode("utf-8"), "layout.tex")
+    normal = next(item for item in parsed.paragraphs if "normal paragraph" in item.text)
+    figure = next(item for item in parsed.paragraphs if "\\begin{figure}" in item.text)
+    table = next(item for item in parsed.paragraphs if "\\begin{tabular}" in item.text)
+    inline = next(item for item in parsed.paragraphs if "\\verb" in item.text)
+
+    assert normal.paragraph_type == "body"
+    assert figure.paragraph_type == "code"
+    assert table.paragraph_type == "code"
+    assert inline.paragraph_type == "code"
