@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from backend.app.core.config import Settings
 from backend.app.core.jobs import Job, ParagraphState, job_store
 from backend.app.humanisation.adaptive_editing import (
+    _SUBJECT_VERB_RE,
     assess_editing_needs,
     load_dataset,
 )
