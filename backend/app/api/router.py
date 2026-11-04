@@ -417,6 +417,8 @@ async def refine_paragraph(job_id: str, request: RefineRequest) -> Dict[str, Any
             style=request.style or job.style,
             pass_number=request.pass_number,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     job.writing_quality = None
