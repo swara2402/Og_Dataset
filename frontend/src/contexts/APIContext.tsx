@@ -32,7 +32,6 @@ export interface HealthStatus {
 export interface EngineStatus {
   deterministic_rules: { available: boolean; enabled: boolean };
   spacy: { provider: string; available: boolean; enabled: boolean; model: string; error: string | null };
-  ollama: { provider: string; enabled: boolean; configured: boolean; model: string | null; base_url: string; network_checked: boolean };
   offline_basic_available: boolean;
 }
 
@@ -339,7 +338,6 @@ interface APIContextType {
     category?: string;
     document_context?: string;
     include_nlp?: boolean;
-    include_local_llm?: boolean;
   }) => Promise<HybridAnalysisResponse | null>;
   updateSettings: (update: Partial<AppSettings>) => Promise<AppSettings | null>;
   clearCache: () => Promise<boolean>;
