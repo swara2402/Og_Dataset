@@ -28,7 +28,6 @@ MEANING_MARKER_RE = re.compile(
     r"caused|causes|cause|causally|before|after|during|until|since)\b",
     re.I,
 )
-SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 STOPWORDS = {
     "the", "and", "that", "this", "with", "from", "have", "has", "had", "were",
     "was", "are", "is", "been", "being", "for", "not", "but", "they", "their",
