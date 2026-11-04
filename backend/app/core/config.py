@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,10 +61,10 @@ class Settings(BaseSettings):
 
     # API authentication. Configure a JSON object mapping stable user IDs to
     # high-entropy bearer tokens before exposing the API beyond localhost.
-    api_tokens: str = ""
-    api_auth_required: bool = False
+    api_tokens: str = Field(default="", validation_alias="OG_API_TOKENS")
+    api_auth_required: bool = Field(default=False, validation_alias="OG_API_AUTH_REQUIRED")
     # Per-owner + direct-client-IP request budget; shared gateways must add distributed limits.
-    api_rate_limit_per_minute: int = 120
+    api_rate_limit_per_minute: int = Field(default=120, validation_alias="OG_API_RATE_LIMIT_PER_MINUTE")
 
     # Storage / CORS
     upload_dir: str = str(BASE_DIR / "backend" / "uploads")
