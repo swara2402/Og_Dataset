@@ -338,7 +338,7 @@ def test_engine_processes_long_documents_without_dropping_paragraphs():
     )
     assert job.paragraphs[1].current_text == paragraphs[1].text
     assert job.statistics["unchanged_paragraphs"] > 0
-    assert job.statistics["dataset"]["version"] == "1.1.0"
+    assert job.statistics["dataset"]["version"] == "1.2.0"
 
 
 def test_engine_does_not_skip_or_truncate_a_long_paragraph():
