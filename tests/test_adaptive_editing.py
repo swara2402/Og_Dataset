@@ -121,8 +121,8 @@ def test_contextual_synonym_selection_abstains_when_uncertain_or_protected():
 def test_latest_og_dataset_rules_policy_examples_and_profile_load():
     dataset = load_dataset()
     identifiers = {rule["id"] for rule in load_quality_rules()}
-    assert dataset["version"] == "1.1.0"
-    assert {"GRAMMAR-001", "WORDCHOICE-001", "EVIDENCE-001"} <= identifiers
+    assert dataset["version"] == "1.2.0"
+    assert {"GRAMMAR-001", "GRAMMAR-002", "WORDCHOICE-001", "EVIDENCE-001"} <= identifiers
     assert len(dataset["examples"]) == 5
     assert any(example["edit_scope"] == "none" for example in dataset["examples"])
     assert "AgriSense" in dataset["reference_profile"]
@@ -263,3 +263,39 @@ def test_editing_profile_uses_abbreviation_aware_sentence_count():
     text = "Dr. Lee used the U.S.A. dataset. The model was evaluated."
     profile = assess_editing_needs(text)
     assert profile["sentence_count"] == 2
+
+
+def test_explicit_plural_subject_verb_agreement_is_corrected_minimally():
+    engine = HumanisationEngine(Settings())
+    original = "The results shows a consistent improvement."
+    profile = assess_editing_needs(original)
+    assert "subject_verb_agreement" in profile["issues"]
+
+    edit = engine._apply_rules_to_text(original, profile, paragraph_type="body")
+    assert edit["revised_text"] == "The results show a consistent improvement."
+    assert edit["applied_rule_ids"] == ["GRAMMAR-002"]
+    assert edit["requires_human_review"] is True
+
+
+def test_plural_agreement_rule_preserves_tense_and_capitalization():
+    engine = HumanisationEngine(Settings())
+    original = "The findings WAS significant. The models HAS improved."
+    profile = assess_editing_needs(original)
+    edit = engine._apply_rules_to_text(original, profile, paragraph_type="body")
+    assert edit["revised_text"] == "The findings WERE significant. The models HAVE improved."
+    assert edit["applied_rule_ids"] == ["GRAMMAR-002"]
+
+
+def test_agreement_rule_abstains_on_ambiguous_or_unlisted_subjects():
+    for original in (
+        "The data is available for review.",
+        "The group is ready for analysis.",
+        "The evidence suggests a relationship.",
+        "The results from the experiment shows improvement.",
+    ):
+        profile = assess_editing_needs(original)
+        assert "subject_verb_agreement" not in profile["issues"]
+        edit = HumanisationEngine(Settings())._apply_rules_to_text(
+            original, profile, paragraph_type="body"
+        )
+        assert edit["revised_text"] == original
