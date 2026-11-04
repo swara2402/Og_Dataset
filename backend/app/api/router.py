@@ -22,9 +22,6 @@ from backend.app.api.auth import current_owner_id, is_admin
 from backend.app.document_processing.parser import DocumentParser
 from backend.app.engine.pipeline import HybridAnalysisPipeline
 from backend.app.providers.spacy_provider import SpacyContextProvider
-from backend.app.providers.ollama_adapter import LocalOllamaAdapter
-from backend.app.providers.ollama_suggestion_engine import OllamaSuggestionEngine
-from ollama_provider import OllamaProvider
 from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
@@ -89,7 +86,6 @@ class ParagraphAnalysisRequest(BaseModel):
     document_context: str = Field(default="", max_length=100000)
     academic_domain: Optional[str] = None
     include_nlp: bool = False
-    include_local_llm: bool = False
 
 
 class UploadResponse(BaseModel):
@@ -765,14 +761,6 @@ async def engine_status() -> Dict[str, Any]:
     return {
         "deterministic_rules": {"available": True, "enabled": _settings.rule_engine_enabled},
         "spacy": {**nlp, "enabled": _settings.spacy_enabled},
-        "ollama": {
-            "provider": "ollama",
-            "enabled": _settings.ollama_enabled,
-            "configured": bool(_settings.ollama_model),
-            "model": _settings.ollama_model or None,
-            "base_url": _settings.ollama_base_url,
-            "network_checked": False,
-        },
         "offline_basic_available": True,
     }
 
@@ -789,18 +777,7 @@ async def analyze_paragraph(request: ParagraphAnalysisRequest) -> Dict[str, Any]
             raise HTTPException(status_code=409, detail="Local spaCy analysis is disabled in server settings.")
         context_providers.append(SpacyContextProvider(_settings.spacy_model))
 
-    if request.include_local_llm:
-        if not _settings.ollama_enabled or not _settings.ollama_model:
-            raise HTTPException(status_code=409, detail="Local Ollama is not enabled or no model is configured.")
-        provider = OllamaProvider(
-            base_url=_settings.ollama_base_url,
-            api_key=_settings.ollama_api_key or None,
-            timeout=_settings.ollama_timeout,
-            num_ctx=_settings.ollama_num_ctx,
-        )
-        proposal_engines.append(
-            OllamaSuggestionEngine(LocalOllamaAdapter(provider=provider, model=_settings.ollama_model))
-        )
+
 
     pipeline = HybridAnalysisPipeline(
         engine, context_providers=context_providers, proposal_engines=proposal_engines
