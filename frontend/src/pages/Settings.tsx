@@ -163,7 +163,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <p className="border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
-                Both model providers are optional and off by default. Enable them in the backend environment only when installed locally. Model suggestions remain pending until you review them.
+                spaCy is optional and runs locally when installed and enabled. It provides linguistic context observations; deterministic Python rules remain responsible for all edits.
               </p>
             </div>
           </section>
