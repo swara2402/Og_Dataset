@@ -255,14 +255,17 @@ async def upload_document(
     # leaves an orphaned job containing the user's original document.
     if auto_start and _engine is None:
         raise HTTPException(status_code=503, detail="Humanisation engine is not initialized.")
+    max_bytes = _settings.max_file_size_mb * 1024 * 1024
     try:
-        data = await file.read()
+        # Read at most one byte beyond the configured limit so oversized
+        # requests cannot allocate unbounded memory before being rejected.
+        data = await file.read(max_bytes + 1)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Could not read upload: {exc}") from exc
     size = len(data)
     if size == 0:
         raise HTTPException(status_code=400, detail="The uploaded file is empty.")
-    if size > _settings.max_file_size_mb * 1024 * 1024:
+    if size > max_bytes:
         raise HTTPException(
             status_code=413,
             detail=f"File exceeds the {_settings.max_file_size_mb} MB limit.",
