@@ -22,6 +22,7 @@ from backend.app.api.auth import current_owner_id, is_admin
 from backend.app.document_processing.parser import DocumentParser
 from backend.app.engine.pipeline import HybridAnalysisPipeline
 from backend.app.providers.spacy_provider import SpacyContextProvider
+from backend.app.engine.spacy_rule_adapter import SpacyMorphologyProposalEngine
 from backend.app.export.exporter import export_document, export_notes
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
@@ -775,7 +776,9 @@ async def analyze_paragraph(request: ParagraphAnalysisRequest) -> Dict[str, Any]
     if request.include_nlp:
         if not _settings.spacy_enabled:
             raise HTTPException(status_code=409, detail="Local spaCy analysis is disabled in server settings.")
-        context_providers.append(SpacyContextProvider(_settings.spacy_model))
+        spacy_provider = SpacyContextProvider(_settings.spacy_model)
+        context_providers.append(spacy_provider)
+        proposal_engines.append(SpacyMorphologyProposalEngine(spacy_provider))
 
 
 
