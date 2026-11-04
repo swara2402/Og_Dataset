@@ -539,7 +539,10 @@ class LatexParser:
             return "equation"
         if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
-        if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt)\}", value):
+        if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt|figure\*?|table\*?|tabular\*?|longtable|tikzpicture|algorithm\*?|algorithmic|picture|minipage)\}", value):
+            # Preserve source markup, graphics, layout and structured content.
+            return "code"
+        if re.search(r"\\(?:verb\*?|lstinline)\s*\S", value):
             return "code"
         if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)|\\begin\s*\{thebibliography\}", value):
             return "reference"
