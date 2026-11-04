@@ -159,9 +159,11 @@ not required.
 python3 -m pytest -q
 python3 scripts/validate_dataset.py
 python3 scripts/validate_revision_pairs.py
+python3 scripts/validate_terminology.py
+python3 scripts/evaluate_preservation.py
 ```
 
-The tests use local fixtures and do not call external model services.
+The synthetic preservation benchmark checks conservative edits against negation, uncertainty, numbers, citations and technical identifiers. It is a regression guard, not proof of semantic equivalence or a substitute for expert human evaluation. The tests use local fixtures and do not call external model services.
 
 ## API overview
 
