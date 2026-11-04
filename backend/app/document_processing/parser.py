@@ -311,7 +311,15 @@ class PDFParser:
             return PDFParser._extract_paragraphs(doc, filename, enable_ocr=enable_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
         if PYPDF_AVAILABLE:
             reader = PypdfReader(io.BytesIO(data))
-            return PDFParser._extract_with_pypdf(reader, filename)
+            parsed = PDFParser._extract_with_pypdf(reader, filename)
+            if enable_ocr:
+                parsed.metadata.update({
+                    "ocr_enabled": True, "ocr_pages": [],
+                    "ocr_unavailable_pages": parsed.metadata.get("pages_with_no_text", []),
+                    "ocr_language": ocr_language, "ocr_dpi": ocr_dpi,
+                    "ocr_warning": "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available.",
+                })
+            return parsed
         raise ImportError(
             "PDF support requires PyMuPDF or pypdf. Install one with "
             "'pip install pymupdf' or 'pip install pypdf'."
