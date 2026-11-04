@@ -20,7 +20,10 @@ CITATION_RE = re.compile(
 )
 MODALITY_RE = re.compile(
     r"\b(?:not|no|never|may|might|could|would|should|must|possibly|probably|"
-    r"likely|unlikely|suggest(?:s|ed)?|approximately|about)\b",
+    r"likely|unlikely|suggest(?:s|ed)?|approximately|about|all|any|some|most|"
+    r"many|few|several|each|every|none|only|exclusively|because|therefore|thus|"
+    r"consequently|although|however|whereas|despite|unless|associated|correlated|"
+    r"caused|causes|cause|causally|before|after|during|until|since)\b",
     re.I,
 )
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
@@ -158,7 +161,7 @@ def validate_rewrite(
     revised_modality = _modality_signature(revised_text)
     modality_ok = original_modality == revised_modality
     if not modality_ok:
-        issues.append("Negation or uncertainty language, or its local scope, changed.")
+        issues.append("A qualifier, relationship marker, negation or uncertainty marker, or its local scope, changed.")
         critical = True
 
     original_length = len(original_text.strip())
