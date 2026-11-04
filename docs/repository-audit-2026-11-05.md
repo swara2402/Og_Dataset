@@ -220,3 +220,16 @@ CI run `41910285189`: **122 passed, 1 skipped, 1 warning**; frontend lint and pr
 - Added tests for malformed metadata, missing licence evidence, path traversal, symlinks, size limits and validation-only mode.
 - Latest verified code snapshot: `8bbafcf92ced41571cbf6d58ede3253df42a012d`.
 - CI run `41911369124`: **129 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
+
+
+## Verification of current main — 2026-11-05
+
+The audit follow-up was rechecked against the current repository head after the corpus-ingestion hardening commits.
+
+- Current main commit: `4c37f81f473b6e59bb46beb2ae7c3b6c57d6aec1`.
+- GitHub Actions run: [Quality checks #481](https://github.com/swara2402/Og_Dataset/actions/runs/41911516943) — completed successfully on this exact commit.
+- Backend job passed the canonical knowledge-base, corpus-manifest, revision-pair, terminology, linguistic-pattern, preservation-benchmark, and backend-test steps.
+- Frontend job passed dependency installation, lint, and production build.
+- No open pull requests were returned by the repository PR listing at audit time.
+
+This CI result verifies the repository's automated checks on the current main commit. It does not close the documented product gaps: representative licensed corpus curation, expert-reviewed revision pairs and terminology, broader linguistic coverage, complex PDF/DOCX/LaTeX fidelity, packaging, and real-machine offline acceptance remain separate work. Empty curated datasets are intentional until valid sources and qualified human review exist; they must not be populated with fabricated examples merely to make the platform appear complete.
