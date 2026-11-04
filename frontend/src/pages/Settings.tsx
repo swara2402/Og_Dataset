@@ -154,7 +154,6 @@ export default function SettingsPage() {
                     : 'Disabled'}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
               <p className="border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
                 spaCy is optional and runs locally when installed and enabled. It provides linguistic context observations; deterministic Python rules remain responsible for all edits.
               </p>
