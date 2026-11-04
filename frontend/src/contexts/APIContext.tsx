@@ -361,6 +361,11 @@ interface APIContextType {
     paragraphId: string,
     action: 'accept' | 'reject'
   ) => Promise<ReviewResponse | null>;
+  reviewHybridProposal: (
+    jobId: string,
+    proposal: HybridProposal,
+    action: 'accept' | 'reject'
+  ) => Promise<ReviewResponse | null>;
   getAnalysisReport: (jobId: string) => Promise<AnalysisReport | null>;
   runOriginality: (options: {
     jobId?: string;
@@ -571,6 +576,36 @@ export function APIProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const reviewHybridProposal = useCallback(
+    async (
+      jobId: string,
+      proposal: HybridProposal,
+      action: 'accept' | 'reject'
+    ): Promise<ReviewResponse | null> => {
+      try {
+        const response = await api.post<ReviewResponse>(
+          `/processing/${jobId}/proposal-review`,
+          {
+            paragraph_id: proposal.paragraph_id,
+            proposal_id: proposal.proposal_id,
+            original_text: proposal.original_text,
+            suggested_text: proposal.suggested_text,
+            source_engine: proposal.source_engine,
+            category: proposal.category,
+            explanation: proposal.explanation,
+            semantic_risk: proposal.semantic_risk,
+            action,
+          }
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Could not ${action} hybrid proposal:`, extractError(error));
+        return null;
+      }
+    },
+    []
+  );
+
   const getAnalysisReport = useCallback(async (jobId: string): Promise<AnalysisReport | null> => {
     try {
       const response = await api.get<AnalysisReport>(`/analysis/${jobId}/report`);
@@ -648,6 +683,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     cancelProcessing,
     refineParagraph,
     reviewParagraph,
+    reviewHybridProposal,
     getAnalysisReport,
     runOriginality,
     exportDocument,
