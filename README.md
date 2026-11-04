@@ -178,6 +178,10 @@ The tests use local fixtures and do not call Ollama or the public web.
 | POST | `/api/v1/originality/check` | Explicit opt-in public-web search |
 | POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |
 
+## Repository audit
+
+The latest source-level architecture and feature audit is documented in [`docs/repository-audit-2026-11-05.md`](./docs/repository-audit-2026-11-05.md). It records verified implementation status, remaining gaps, duplicate data sources, optional provider remnants, test evidence and the remediation order.
+
 ## Dataset updates
 
 Edit only `knowledge_base/` for rules, profiles, schemas, examples and policies.
