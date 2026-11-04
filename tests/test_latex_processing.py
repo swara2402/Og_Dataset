@@ -142,6 +142,6 @@ def test_latex_parser_protects_layout_graphics_and_inline_code_environments():
     inline = next(item for item in parsed.paragraphs if "\\verb" in item.text)
 
     assert normal.paragraph_type == "body"
-    assert figure.paragraph_type == "code"
+    assert figure_blocks and all(item.paragraph_type == "code" for item in figure_blocks)
     assert table.paragraph_type == "code"
     assert inline.paragraph_type == "code"
