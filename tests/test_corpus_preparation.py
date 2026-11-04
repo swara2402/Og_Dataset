@@ -1,0 +1,61 @@
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from prepare_corpus import load_manifest, main  # noqa: E402
+
+
+def test_manifest_rejects_unapproved_licence(tmp_path):
+    manifest = tmp_path / "sources.jsonl"
+    manifest.write_text(json.dumps({
+        "source_id": "P1", "title": "Paper", "url": "https://example.test",
+        "license": "UNKNOWN", "text_mining_permitted": True,
+        "discipline": "computer_science", "sections": ["abstract"],
+        "local_text": "paper.txt"
+    }) + "\n", encoding="utf-8")
+    try:
+        load_manifest(manifest)
+    except ValueError as exc:
+        assert "licence" in str(exc)
+    else:
+        raise AssertionError("unknown licence must be rejected")
+
+
+def test_manifest_rejects_path_traversal(tmp_path):
+    manifest = tmp_path / "sources.jsonl"
+    manifest.write_text(json.dumps({
+        "source_id": "P1", "title": "Paper", "url": None,
+        "license": "CC-BY-4.0", "text_mining_permitted": True,
+        "discipline": "computer_science", "sections": ["abstract"],
+        "local_text": "../paper.txt"
+    }) + "\n", encoding="utf-8")
+    try:
+        load_manifest(manifest)
+    except ValueError as exc:
+        assert "filename" in str(exc)
+    else:
+        raise AssertionError("path traversal must be rejected")
+
+
+def test_corpus_builder_emits_aggregates_not_source_sentences(tmp_path, monkeypatch):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    secret_sentence = "Our experimental framework evaluates several useful outcomes."
+    (raw / "demo.txt").write_text("[SECTION: abstract]\n" + secret_sentence, encoding="utf-8")
+    manifest = tmp_path / "sources.jsonl"
+    manifest.write_text(json.dumps({
+        "source_id": "P1", "title": "Demo", "url": None,
+        "license": "CC-BY-4.0", "text_mining_permitted": True,
+        "discipline": "computer_science", "sections": ["abstract"],
+        "local_text": "demo.txt"
+    }) + "\n", encoding="utf-8")
+    output = tmp_path / "observations.json"
+    monkeypatch.setattr(sys, "argv", ["prepare_corpus.py", "--manifest", str(manifest),
+                                      "--input-dir", str(raw), "--output", str(output)])
+    assert main() == 0
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert report["source_count"] == 1
+    assert report["sentence_count"] == 1
+    assert secret_sentence not in output.read_text(encoding="utf-8")
