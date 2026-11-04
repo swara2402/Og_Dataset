@@ -34,7 +34,7 @@ Use the licence identifier and retain attribution requirements. The allowlist is
 
 ## What is measured
 
-The report aggregates sentence counts, sentence-length distributions, section coverage, hedge-marker frequency, passive-construction marker frequency, and transition-category frequency. These are coarse corpus statistics, not quality scores. They must not be used to force a particular style, inflate complexity, or replace discipline-specific human review.
+The report aggregates sentence counts, sentence-length distributions, section coverage, hedge-marker frequency, be-auxiliary marker frequency and heuristic sentence-opening patterns, and transition-category frequency. These are coarse corpus statistics, not quality scores. They must not be used to force a particular style, inflate complexity, or replace discipline-specific human review.
 
 ## Revision pairs
 
