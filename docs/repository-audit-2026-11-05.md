@@ -202,3 +202,11 @@ The optional public-web originality feature has now been removed from the core a
 - Updated API metadata so it no longer advertises originality checking.
 - Current verified code snapshot: `6d432966e05b1363381193200be1bb5534ce3664`.
 - CI run `41910037558`: **121 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
+
+
+## Conservative punctuation correction follow-up
+
+The punctuation rule previously inserted a space after every period immediately followed by a letter. That could split abbreviations such as `e.g.` and `i.e.`. It now inserts a sentence-boundary space only before a capitalised next token, preserving lowercase abbreviation components and decimal values. Added regression coverage for `e.g.`, `i.e.`, and decimal notation.
+
+Latest verified code snapshot: `d02b18489d57f3bedecf7291605585c0953f1177`.
+CI run `41910285189`: **122 passed, 1 skipped, 1 warning**; frontend lint and production build passed.
