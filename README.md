@@ -26,8 +26,8 @@ as approved rewrite pairs.
   retain original text for pending or rejected suggestions.
 - Preserve DOCX paragraph/table structure where supported; provide PDF, text,
   Markdown, and source-preserving LaTeX export.
-- Keep analysis and exports local. Public-web originality search is separate
-  and opt-in.
+- Keep document analysis, editing, history and exports local. No public-web
+  originality search or hosted model service is part of the application.
 
 The system targets writing quality and meaning preservation. It does not
 optimize for AI-detector evasion or promise detector scores.
