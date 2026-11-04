@@ -28,6 +28,8 @@ jobs:
         run: python scripts/validate_linguistic_patterns.py
       - name: Run preservation regression benchmark
         run: python scripts/evaluate_preservation.py
+      - name: Validate local launcher scripts
+        run: bash -n scripts/run_local.sh && python -m py_compile scripts/check_local.py
       - name: Run backend tests
         run: python -m pytest -q
 
