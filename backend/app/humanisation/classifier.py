@@ -197,6 +197,14 @@ class ParagraphClassifier:
         confidence = 1.0 - max_other
         return is_ordinary, confidence
     
+    def _looks_like_author_list(self, text: str) -> bool:
+        """Recognize compact comma-separated author names without treating prose as metadata."""
+        parts = [part.strip().rstrip("*") for part in text.split(",")]
+        if len(parts) < 2 or len(parts) > 12:
+            return False
+        name_part = re.compile(r"^(?:[A-Z][a-zÀ-ÖØ-öø-ÿ'’-]+|[A-Z]\.)(?:\s+(?:[A-Z][a-zÀ-ÖØ-öø-ÿ'’-]+|[A-Z]\.)){1,3}$")
+        return all(name_part.fullmatch(part) for part in parts)
+
     def _should_refine(self, category: str, paragraph_type: str) -> bool:
         """Determine if a paragraph is eligible for refinement."""
         protected = {
@@ -232,6 +240,28 @@ class ParagraphClassifier:
                 section_context=None
             )
         
+        # Respect structural metadata before applying prose classifiers.
+        style_name = str(paragraph.metadata.get("style") or "").strip().casefold()
+        if style_name.startswith(("title", "subtitle", "heading")) or paragraph.metadata.get("md_heading"):
+            return ParagraphClassification(
+                paragraph_id=paragraph.id,
+                primary_category="heading",
+                confidence=1.0,
+                eligible_for_refinement=False,
+                features={"structural_signal": "document_style"},
+                section_context=None,
+            )
+
+        if self._looks_like_author_list(text):
+            return ParagraphClassification(
+                paragraph_id=paragraph.id,
+                primary_category="front_matter",
+                confidence=0.9,
+                eligible_for_refinement=False,
+                features={"structural_signal": "author_list"},
+                section_context=None,
+            )
+
         # If paragraph is already marked as non-body, use that type
         if paragraph.paragraph_type != "body":
             return ParagraphClassification(
@@ -305,8 +335,30 @@ class ParagraphClassifier:
         self.current_section = None
         self.section_history = []
         
-        for para in paragraphs:
-            classification = self.classify(para)
+        for index, para in enumerate(paragraphs):
+            text = para.text.strip()
+            style_name = str(para.metadata.get("style") or "").strip().casefold()
+            # A short, standalone opening paragraph is often the paper title in
+            # plain-text/PDF imports where Word style metadata is unavailable.
+            looks_like_opening_title = (
+                index == 0
+                and para.paragraph_type == "body"
+                and 4 <= len(text.split()) <= 30
+                and len(text) <= 240
+                and not re.search(r"[.!?;:]$", text)
+                and not self._looks_like_author_list(text)
+            )
+            if style_name.startswith(("title", "subtitle")) or para.metadata.get("md_heading") or looks_like_opening_title:
+                classification = ParagraphClassification(
+                    paragraph_id=para.id,
+                    primary_category="heading",
+                    confidence=0.85 if looks_like_opening_title else 1.0,
+                    eligible_for_refinement=False,
+                    features={"structural_signal": "opening_title" if looks_like_opening_title else "document_style"},
+                    section_context=None,
+                )
+            else:
+                classification = self.classify(para)
             classifications.append(classification)
         
         return classifications
