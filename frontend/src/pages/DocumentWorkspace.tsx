@@ -24,6 +24,7 @@ import {
   ProcessingProgress,
   ResultsResponse,
   WritingStyle,
+  HybridAnalysisResponse,
 } from '../contexts/APIContext';
 
 const ACTIVE_EDITING_STYLE: WritingStyle = 'preserve_voice';
@@ -46,6 +47,7 @@ export default function DocumentWorkspace() {
     getProcessingStatus,
     getProcessingResults,
     reviewParagraph,
+    analyzeParagraph,
     exportDocument,
     isConnected,
   } = useAPI();
@@ -57,6 +59,11 @@ export default function DocumentWorkspace() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [hybridResult, setHybridResult] = useState<HybridAnalysisResponse | null>(null);
+  const [hybridLoading, setHybridLoading] = useState(false);
+  const [useLocalOllama, setUseLocalOllama] = useState(false);
+  const [useSpacyContext, setUseSpacyContext] = useState(false);
+  const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
 
   const loadJob = useCallback(
     async (id: string) => {
@@ -479,6 +486,52 @@ export default function DocumentWorkspace() {
                 {selected && (
                   <div className="space-y-3">
                     <p className="text-xs text-neutral-500">Paragraph {selected.index + 1} · {selected.versions.length} versions</p>
+                    <div className="rounded-lg border border-primary-200 bg-primary-50/60 p-4 dark:border-primary-900 dark:bg-primary-900/10">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-neutral-800 dark:text-neutral-100">Hybrid suggestion review</p>
+                          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">Generate traceable proposals from the rule engine and any enabled local providers. Nothing is applied automatically.</p>
+                        </div>
+                        <button onClick={() => void handleHybridAnalysis(selected)} disabled={hybridLoading} className="btn-primary inline-flex items-center gap-2">
+                          {hybridLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                          {hybridLoading ? 'Analyzing…' : 'Analyze paragraph'}
+                        </button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-4 text-xs text-neutral-600 dark:text-neutral-400">
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={useSpacyContext} onChange={(event) => setUseSpacyContext(event.target.checked)} />
+                          Include spaCy context
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input type="checkbox" checked={useLocalOllama} onChange={(event) => setUseLocalOllama(event.target.checked)} />
+                          Include local Ollama
+                        </label>
+                      </div>
+                      {(useSpacyContext || useLocalOllama) && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Selected providers must be enabled and configured by the backend administrator.</p>}
+                      {hybridResult && hybridResult.paragraph_id === selected.id && (
+                        <div className="mt-4 space-y-3">
+                          <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{hybridResult.proposals.length} proposal(s) · {hybridResult.applied ? 'Applied' : 'Not applied'} · Review required: {hybridResult.review_required ? 'Yes' : 'No'}</p>
+                          {hybridResult.proposals.length === 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">No additional supported suggestions were produced. The paragraph remains unchanged.</p>}
+                          {hybridResult.proposals.map((proposal) => (
+                            <div key={proposal.proposal_id} className="rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-800">
+                              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                                <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-700">{proposal.source_engine.replace(/_/g, ' ')}</span>
+                                <span>{proposal.category}</span>
+                                <span>Risk: {proposal.semantic_risk}</span>
+                                {proposal.rule_id && <span>Rule: {proposal.rule_id}</span>}
+                              </div>
+                              <p className="text-sm leading-relaxed text-neutral-500 line-through">{proposal.original_text}</p>
+                              <p className="mt-2 text-sm leading-relaxed text-neutral-800 dark:text-neutral-100">{proposal.suggested_text}</p>
+                              {proposal.explanation && <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{proposal.explanation}</p>}
+                              <button onClick={() => void handleCopyProposal(proposal)} className="btn-secondary mt-3 inline-flex items-center gap-2">
+                                <FileText size={14} /> {copiedProposalId === proposal.proposal_id ? 'Copied' : 'Copy suggestion'}
+                              </button>
+                            </div>
+                          ))}
+                          <p className="text-xs text-neutral-500">These are review-only proposals. Copy a suggestion into your own revision after checking meaning, citations, and technical accuracy.</p>
+                        </div>
+                      )}
+                    </div>
                     {selected.versions.map((version) => (
                       <div key={version.version} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
                         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
