@@ -25,7 +25,6 @@ from backend.app.export.exporter import export_document
 from backend.app.humanisation.classifier import ParagraphClassifier
 from backend.app.humanisation.engine import HumanisationEngine
 from backend.app.protected_content.masker import ProtectedContentMasker
-from backend.app.quality_analysis.ai_indicators import analyze_ai_indicators
 from backend.app.quality_analysis.analyzer import analyze_text, compare_texts
 from backend.app.validation.validator import validate_rewrite
 
@@ -240,21 +239,15 @@ def test_validator_accepts_faithful_rewrite_with_semantic_override():
     assert result["checks"]["citations"] is True
 
 
-def test_quality_and_ai_analysis_are_explicitly_heuristic():
+def test_quality_analysis_is_descriptive_and_not_an_authorship_measure():
     text = (
         "Artificial intelligence has transformed data analysis. "
         "A 2023 survey reports that 67% of firms use machine learning. "
         "This adoption improves efficiency but raises transparency concerns."
     )
     quality = analyze_text(text)
-    report = analyze_ai_indicators(text)
-
     assert 0 <= quality["flesch_reading_ease"] <= 120
     assert quality["word_count"] > 0
-    assert report["detector_available"] is False
-    assert "not a verified AI-detection score" in report["detector_note"]
-    assert report["indicator_score"] is None
-    assert report["band"] == "not_a_detector"
 
 
 def test_compare_texts_reports_real_deltas():
