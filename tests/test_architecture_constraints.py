@@ -38,6 +38,7 @@ def test_public_web_originality_is_absent_from_offline_core():
     assert "/originality/check" not in paths
     assert "enable_web_originality" not in Settings.model_fields
     assert not (ROOT / "backend/app/originality").exists()
+    assert not (ROOT / "plagiarism_detector.py").exists()
     frontend_api = (ROOT / "frontend/src/contexts/APIContext.tsx").read_text(encoding="utf-8")
     assert "runOriginality" not in frontend_api
     assert "/originality/check" not in frontend_api
