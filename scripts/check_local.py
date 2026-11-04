@@ -11,6 +11,7 @@ import os
 import sys
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from urllib.parse import urlsplit
 
 API_BASE = os.environ.get("OG_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 APP_URL = os.environ.get("OG_APP_URL", "http://127.0.0.1:5173").rstrip("/")
@@ -28,7 +29,8 @@ def get(url: str):
 
 def main() -> int:
     for url in (API_BASE, APP_URL):
-        if not url.startswith(("http://127.0.0.1", "http://localhost", "http://[::1]")):
+        parsed = urlsplit(url)
+        if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
             print(f"Refusing non-loopback URL: {url}", file=sys.stderr)
             return 2
 
