@@ -231,10 +231,22 @@ export default function DocumentWorkspace() {
   const changedCount = results?.results.filter((item) => item.original !== item.revised).length || 0;
   const eligibleCount = results?.results.filter((item) => item.eligible).length || 0;
   const unchangedCount = results?.results.filter((item) => item.eligible && item.original === item.revised).length || 0;
+  // Only unresolved proposals and validation failures require a review decision.
+  // "No meaningful change" is an informational abstention, not a review warning.
   const reviewItems = results?.results.filter((item) =>
-    item.warnings.length > 0 || item.requires_human_review || (item.validation.issues?.length || 0) > 0
+    (item.proposal !== null && item.review_status === 'pending') ||
+    item.status === 'needs_review' ||
+    item.status === 'failed' ||
+    item.validation.critical === true ||
+    (item.validation.issues?.length || 0) > 0
   ) || [];
-  const warningCount = results?.results.reduce((total, item) => total + item.warnings.length, 0) || 0;
+  const authorNoteCount = results?.results.filter((item) =>
+    item.proposal === null && item.requires_human_review
+  ).length || 0;
+  const warningCount = results?.results.reduce(
+    (total, item) => total + item.warnings.filter((warning) => warning !== 'No meaningful change was produced.').length,
+    0
+  ) || 0;
   const protectedCount = results?.results.reduce((sum, item) => sum + item.protected_items.length, 0) || 0;
 
   const renderDropzone = () => (
@@ -359,7 +371,9 @@ export default function DocumentWorkspace() {
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900/40">
           <p className="font-semibold text-neutral-800 dark:text-neutral-100">How to read these results</p>
           <p className="mt-1 text-neutral-600 dark:text-neutral-300">A paragraph counts as an edit only when its text actually changed. Unchanged paragraphs are not failures: the rules leave text alone when no safe, supported correction is available. Preserved headings, references, tables and other non-prose content are counted separately from eligible prose.</p>
-          {reviewItems.length > 0 && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{reviewItems.length} paragraph(s) need your attention. Open the Revised tab to see each warning and its paragraph number.</p>}
+          {reviewItems.length > 0 && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{reviewItems.length} paragraph(s) have pending edit decisions or validation issues. Open the Revised tab to review them.</p>}
+          {authorNoteCount > 0 && <p className="mt-1 text-neutral-600 dark:text-neutral-300">{authorNoteCount} unchanged paragraph(s) have author-review notes. These are kept separate from pending edits.</p>}
+          {warningCount > 0 && <p className="mt-1 text-neutral-600 dark:text-neutral-300">{warningCount} actionable warning message(s); routine “No meaningful change” notices are excluded.</p>}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800">
