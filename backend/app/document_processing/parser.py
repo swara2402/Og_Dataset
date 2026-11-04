@@ -520,7 +520,7 @@ class LatexParser:
             return "code"
         # Inline links and file inclusions can carry targets or assets that
         # must not be rewritten as ordinary prose.
-        if re.search(r"\\\\(?:href|url|includegraphics|input|include|lstinputlisting)\\b", value):
+        if re.search(r"\\(?:href|url|includegraphics|input|include|lstinputlisting)\b", value):
             return "code"
         return "body"
 
