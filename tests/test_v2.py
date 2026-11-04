@@ -209,6 +209,7 @@ def test_validator_rejects_quantifier_and_causality_changes():
         )
         assert result["valid"] is False
         assert result["checks"]["modality"] is False
+        assert result["checks"]["meaning_markers"] is False
 
 
 def test_validator_accepts_faithful_rewrite_with_semantic_override():
