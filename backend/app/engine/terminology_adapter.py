@@ -76,7 +76,7 @@ class TerminologyProposalEngine:
                         requires_review=True,
                         start_offset=start,
                         end_offset=end,
-                        dataset_version=entry.get("term_id"),
+                        dataset_version="terminology-v1",
                         protected_span_ids=[f"{span.type}:{span.start}:{span.end}" for span in spans],
                         validation={
                             "checks": validation["checks"],
