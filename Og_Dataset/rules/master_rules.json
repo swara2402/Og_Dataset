@@ -102,6 +102,15 @@
       "preservation": ["Never fabricate citations, measurements, findings, or certainty."]
     },
     {
+      "id": "WORDINESS-001",
+      "category": "concision",
+      "name": "Trim a small set of redundant phrases",
+      "guidance": "Replace only narrowly defined phrases whose shorter form preserves the same stated relationship and meaning.",
+      "apply_when": ["A listed redundant phrase appears in editable prose."],
+      "do_not_apply_when": ["The phrase is quoted or protected.", "The shorter wording would change emphasis, scope, or meaning."],
+      "preservation": ["Do not add or remove claims, evidence, uncertainty, or causal relationships."]
+    },
+    {
       "id": "STRUCTURE-001",
       "category": "structure",
       "name": "Improve paragraph focus only when needed",
