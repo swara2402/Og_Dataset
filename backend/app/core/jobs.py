@@ -151,16 +151,17 @@ class ParagraphState:
         return self.current_text != self.original_text
 
     def to_dict(self, include_versions: bool = True) -> Dict[str, Any]:
-        # Rejected hybrid suggestions remain in version history for audit, but
-        # must never be exposed as the paragraph's active proposal after reload.
-        proposal = next(
-            (
-                version.text
-                for version in reversed(self.versions)
-                if version.source != "original"
-                and not version.source.startswith("hybrid-rejected:")
-            ),
+        # Only the newest non-original version can represent the active proposal.
+        # If that newest version was rejected, older suggestions must not reappear.
+        latest_proposal = next(
+            (version for version in reversed(self.versions) if version.source != "original"),
             None,
+        )
+        proposal = (
+            latest_proposal.text
+            if latest_proposal is not None
+            and not latest_proposal.source.startswith("hybrid-rejected:")
+            else None
         )
         data: Dict[str, Any] = {
             "id": self.id,
