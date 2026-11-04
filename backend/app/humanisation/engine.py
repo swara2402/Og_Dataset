@@ -124,8 +124,8 @@ class ResultCache:
 def _restore_placeholders(
     masked_text: str, replacements: Dict[str, str]
 ) -> Tuple[Optional[str], Optional[str]]:
-    found = sorted(PLACEHOLDER_RE.findall(masked_text))
-    expected = sorted(replacements)
+    found = PLACEHOLDER_RE.findall(masked_text)
+    expected = list(replacements)
     if found != expected:
         return None, "Protected content placeholders were missing, altered, or duplicated."
     restored = masked_text
