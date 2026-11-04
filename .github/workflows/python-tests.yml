@@ -1,0 +1,52 @@
+name: Python tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Validate canonical dataset
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          root = Path("Og_Dataset")
+          schema = json.loads((root / "schemas/example.schema.json").read_text())
+          validator = Draft202012Validator(schema)
+          examples = [
+              json.loads(line)
+              for line in (root / "datasets/examples.jsonl").read_text().splitlines()
+              if line.strip()
+          ]
+          errors = [
+              (example.get("example_id", "<unknown>"), error.message)
+              for example in examples
+              for error in validator.iter_errors(example)
+          ]
+          if errors:
+              raise SystemExit("\\n".join(f"{item}: {message}" for item, message in errors))
+          print(f"Validated {len(examples)} dataset examples.")
+          PY
+      - name: Run test suite
+        run: python -m pytest -q
