@@ -101,6 +101,11 @@ of configured user IDs (for example `alice`). If it is empty, token users
 cannot change global settings or clear the shared cache. Trusted local mode
 retains its single-user administrator behavior.
 
+Token configuration rejects duplicate user IDs, duplicate bearer secrets, and
+more than 500 configured users. User IDs are limited to 128 characters and
+tokens must be 32-512 characters. Analysis and originality request bodies
+also enforce bounded text and selection sizes to avoid unbounded processing.
+
 The API also applies a sliding-window limit of 120 requests per minute per
 authenticated owner and direct client IP by default. Change
 `OG_API_RATE_LIMIT_PER_MINUTE` to tune the budget. Excess requests receive
