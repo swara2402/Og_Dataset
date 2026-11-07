@@ -214,8 +214,11 @@ class DocxParser:
             nonlocal table_counter
             table_counter += 1
             current_table = table_counter
+            # A vertically merged cell can be exposed by python-docx in
+            # more than one row. Track physical cells across the whole table,
+            # not just within each row, so its paragraphs receive one stable ID.
+            seen_cells: set[Any] = set()
             for row_idx, row in enumerate(table.rows):
-                seen_cells: set[Any] = set()
                 for cell_idx, cell in enumerate(row.cells):
                     cell_key = cell._tc
                     if cell_key in seen_cells:
