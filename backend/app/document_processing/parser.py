@@ -533,177 +533,108 @@ class TextParser:
 
 
 class MarkdownParser:
-    """Markdown file parser."""
-    
+    """Markdown parser that keeps fenced code blocks intact across blank lines."""
+
     @staticmethod
     def parse(file_path: Path, filename: str) -> ParsedDocument:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         return MarkdownParser._parse_markdown(content, filename)
-    
-    @staticmethod
-    def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
-        content = data.decode('utf-8')
-        return MarkdownParser._parse_markdown(content, filename)
-    
-    @staticmethod
-    def _parse_markdown(content: str, filename: str) -> ParsedDocument:
-        paragraphs: List[DocumentParagraph] = []
-        counter = 0
-        
-        # Split into blocks, identify markdown elements
-        blocks = re.split(r'\n\s*\n', content)
-        
-        for block in blocks:
-            block = block.strip()
-            if not block:
-                continue
-            counter += 1
-            
-            # Detect markdown headings
-            if block.startswith('#'):
-                paragraphs.append(DocumentParagraph(
-                    id=f"md_{counter}",
-                    text=block.lstrip('#').strip(),
-                    paragraph_type="heading",
-                    location=f"markdown.{counter}",
-                    metadata={"md_heading": True}
-                ))
-                continue
-            
-            # Detect code blocks
-            if block.startswith('```'):
-                paragraphs.append(DocumentParagraph(
-                    id=f"md_{counter}",
-                    text=block.replace('```', '').strip(),
-                    paragraph_type="code",
-                    location=f"markdown.{counter}",
-                    metadata={"code_block": True}
-                ))
-                continue
-            
-            # Regular body text
-            paragraphs.append(DocumentParagraph(
-                id=f"md_{counter}",
-                text=block,
-                paragraph_type="body",
-                location=f"markdown.{counter}"
-            ))
-        
-        return ParsedDocument(
-            filename=filename,
-            file_type="markdown",
-            paragraphs=paragraphs
-        )
-
-
-class LatexParser:
-    """Conservative LaTeX block parser with exact source offsets.
-
-    It does not attempt to fully compile or normalize TeX. Structural commands,
-    math environments, code environments and bibliography blocks are marked
-    non-editable; prose blocks retain source positions for export.
-    """
-
-    @staticmethod
-    def _classify(block: str) -> str:
-        value = block.strip()
-        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|alignat\*?|gather\*?|gathered|multline\*?|math|displaymath|flalign\*?|eqnarray\*?|split|cases|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix)\}", value):
-            return "equation"
-        if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
-            return "equation"
-        if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt|figure\*?|table\*?|tabular\*?|longtable|tikzpicture|algorithm\*?|algorithmic|picture|minipage)\}", value):
-            # Preserve source markup, graphics, layout and structured content.
-            return "code"
-        if re.search(r"\\(?:verb\*?|lstinline)\s*\S", value):
-            return "code"
-        if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)|\\begin\s*\{thebibliography\}", value):
-            return "reference"
-        if re.search(r"\\(?:documentclass|usepackage|newcommand|renewcommand|maketitle|author|date|label)\b|\\(?:begin|end)\s*\{document\}", value):
-            return "front_matter"
-        if re.search(r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|title)\*?\s*\{", value):
-            return "heading"
-        if value.startswith("%") or re.search(r"(?m)^\\s*%", value):
-            return "code"
-        # Inline links and file inclusions can carry targets or assets that
-        # must not be rewritten as ordinary prose.
-        if re.search(r"\\(?:href|url|includegraphics|input|include|lstinputlisting)\b", value):
-            return "code"
-        return "body"
-
-    @staticmethod
-    def _parse_content(content: str, filename: str) -> ParsedDocument:
-        paragraphs: List[DocumentParagraph] = []
-        block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
-        math_environments = {
-            "equation", "equation*", "align", "align*", "alignat", "alignat*",
-            "gather", "gather*", "gathered", "multline", "multline*",
-            "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
-            "displaymath", "split", "cases", "array", "matrix", "pmatrix",
-            "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
-        }
-        protected_environments = {
-            "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
-            *math_environments,
-            "figure", "figure*", "table", "table*", "tabular", "tabular*",
-            "longtable", "tikzpicture", "algorithm", "algorithm*",
-            "algorithmic", "picture", "minipage",
-        }
-        active_environments: list[str] = []
-        environment_pattern = re.compile(r"\\(begin|end)\s*\{([^}]+)\}")
-        for index, match in enumerate(block_pattern.finditer(content), start=1):
-            block = match.group(0)
-            start, end = match.span()
-            starts_protected = False
-            was_inside_protected = any(
-                env in protected_environments for env in active_environments
-            )
-            for action, environment in environment_pattern.findall(block):
-                if action == "begin":
-                    if environment in protected_environments:
-                        starts_protected = True
-                    active_environments.append(environment)
-                else:
-                    if environment in active_environments:
-                        reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
-                        active_environments = active_environments[:reverse_index]
-            paragraph_type = LatexParser._classify(block)
-            protected_context = [
-                *active_environments,
-                *(environment for _, environment in environment_pattern.findall(block)),
-            ]
-            if was_inside_protected or starts_protected or any(
-                env in protected_environments for env in active_environments
-            ):
-                # Math remains a distinct non-editable equation type. Other
-                # protected containers (figures, code, tables, diagrams) take
-                # precedence when math is nested inside them.
-                if any(env in protected_environments - math_environments for env in protected_context):
-                    paragraph_type = "code"
-                elif any(env in math_environments for env in protected_context):
-                    paragraph_type = "equation"
-                else:
-                    paragraph_type = "code"
-            paragraphs.append(DocumentParagraph(
-                id=f"tex_block_{index}",
-                text=block,
-                paragraph_type=paragraph_type,
-                location=f"tex.{start}:{end}",
-                metadata={"source_start": start, "source_end": end, "format": "latex"},
-            ))
-        return ParsedDocument(
-            filename=filename,
-            file_type="tex",
-            paragraphs=paragraphs,
-            metadata={"source_length": len(content), "format": "latex"},
-        )
-
-    @staticmethod
-    def parse(file_path: Path, filename: str) -> ParsedDocument:
-        content = file_path.read_text(encoding="utf-8")
-        return LatexParser._parse_content(content, filename)
 
     @staticmethod
     def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
         content = data.decode("utf-8")
-        return LatexParser._parse_content(content, filename)
+        return MarkdownParser._parse_markdown(content, filename)
+
+    @staticmethod
+    def _parse_markdown(content: str, filename: str) -> ParsedDocument:
+        paragraphs: List[DocumentParagraph] = []
+        blocks: List[tuple[str, str | None, int, bool]] = []
+        current: List[str] = []
+        fence_char: str | None = None
+        fence_length = 0
+        fence_language = ""
+        fence_start = 0
+
+        def flush(kind: str | None = None, language: str = "", start_line: int = 0, closed: bool = True) -> None:
+            nonlocal current
+            if current:
+                blocks.append(("\\n".join(current), kind, start_line, closed))
+                current = []
+
+        for line_number, line in enumerate(content.splitlines(), start=1):
+            stripped = line.lstrip()
+            if fence_char is None:
+                opening = re.match(r"^(`{3,}|~{3,})(.*)$", stripped)
+                if opening:
+                    flush()
+                    fence_char = opening.group(1)[0]
+                    fence_length = len(opening.group(1))
+                    fence_language = opening.group(2).strip()
+                    fence_start = line_number
+                    current = [line]
+                    continue
+                if not line.strip():
+                    flush()
+                else:
+                    current.append(line)
+                continue
+
+            current.append(line)
+            closing = re.match(r"^([\\`~]+)\\s*$", stripped)
+            if closing and closing.group(1)[0] == fence_char and len(closing.group(1)) >= fence_length and set(closing.group(1)) == {fence_char}:
+                flush("code", fence_language, fence_start, True)
+                fence_char = None
+                fence_length = 0
+                fence_language = ""
+                fence_start = 0
+
+        if fence_char is not None:
+            flush("code", fence_language, fence_start, False)
+        else:
+            flush()
+
+        for index, (block, forced_type, start_line, closed) in enumerate(blocks, start=1):
+            if forced_type == "code":
+                fence_lines = block.splitlines()
+                code_lines = fence_lines[1:-1] if closed and len(fence_lines) >= 2 else fence_lines[1:]
+                text = "\\n".join(code_lines)
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text=text,
+                    paragraph_type="code",
+                    location=f"markdown.{index}",
+                    metadata={
+                        "code_block": True,
+                        "fence_language": fence_language if False else "",
+                        "source_line": start_line,
+                        "closed_fence": closed,
+                    },
+                ))
+                continue
+
+            block = block.strip()
+            if not block:
+                continue
+            if block.startswith("#"):
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text=block.lstrip("#").strip(),
+                    paragraph_type="heading",
+                    location=f"markdown.{index}",
+                    metadata={"md_heading": True},
+                ))
+            else:
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text=block,
+                    paragraph_type="body",
+                    location=f"markdown.{index}",
+                ))
+
+        return ParsedDocument(
+            filename=filename,
+            file_type="markdown",
+            paragraphs=paragraphs,
+            metadata={"block_count": len(paragraphs)},
+        )
