@@ -50,3 +50,27 @@ def test_docx_edit_fails_closed_for_hyperlink_xml():
     assert _set_paragraph_text(paragraph, "Replace all text") is False
 
     assert paragraph._p.xml == original_xml
+
+def test_docx_edit_fails_closed_for_non_text_content_inside_run():
+    document = Document()
+    paragraph = document.add_paragraph()
+    run = paragraph.add_run("Keep this text")
+    drawing = OxmlElement("w:drawing")
+    run._r.append(drawing)
+    original_xml = paragraph._p.xml
+
+    assert _set_paragraph_text(paragraph, "Replace all text") is False
+    assert paragraph._p.xml == original_xml
+
+
+def test_docx_edit_fails_closed_for_tabs_and_line_breaks_inside_run():
+    for tag in ("w:tab", "w:br"):
+        document = Document()
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run("Before")
+        run._r.append(OxmlElement(tag))
+        run.add_text("After")
+        original_xml = paragraph._p.xml
+
+        assert _set_paragraph_text(paragraph, "Replace all text") is False
+        assert paragraph._p.xml == original_xml
