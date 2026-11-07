@@ -10,7 +10,7 @@ This project uses deterministic local parsing and export. “Supported” means 
 | PDF | Yes | Yes | Import extracts readable text and paragraph order. It does not preserve complex columns, page layout, embedded tables or image-only content without optional local OCR. Export creates a new, simple text-based PDF; it is not a visual reconstruction of the source PDF. |
 | LaTeX (.tex) | Yes | Yes | Import retains exact source offsets. Export splices only accepted body-paragraph edits into the original source. Edits that change TeX commands, braces, or unescaped special syntax are rejected, as are invalid or overlapping offsets. Structural blocks, equations, code and bibliography content are not eligible for prose rewriting. |
 | TXT | Yes | Yes | UTF-8 text is imported and exported as paragraphs separated by blank lines. Original whitespace layout is not guaranteed to round-trip. |
-| Markdown | Yes | Yes | Markdown is imported as text blocks and exported with basic heading, code-block and reference formatting. Arbitrary Markdown extensions and exact source formatting are not guaranteed to round-trip. |
+| Markdown | Yes | Yes | Markdown is imported as text blocks and exported with basic heading, code-block and reference formatting. Fenced code blocks and contiguous four-space/tab-indented code blocks (including internal blank lines) are protected from prose edits. This is a conservative subset, not a complete CommonMark parser; arbitrary Markdown extensions and exact source formatting are not guaranteed to round-trip. |
 
 ## Review and preservation rules
 
