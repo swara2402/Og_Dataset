@@ -2,18 +2,39 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 from jsonschema import Draft202012Validator
 from backend.app.retrieval.bm25 import BM25Index
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATASET = ROOT / "knowledge_base/datasets/revision_pairs.jsonl"
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/revision_pair.schema.json"
 ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
+def _is_https_url(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    parsed = urlparse(value)
+    return parsed.scheme == "https" and bool(parsed.netloc)
+
+
 def eligible(pair: dict[str, Any]) -> bool:
     src = pair.get("source") or {}
-    return (pair.get("review_status") == "human_approved" and pair.get("meaning_preserved") is True
-            and bool(pair.get("reviewer_id")) and src.get("kind") in {"human_revision", "public_dataset"}
-            and src.get("license") in ALLOWED_LICENSES
-            and (src.get("kind") != "public_dataset" or src.get("text_mining_permitted") is True))
+    if not (
+        pair.get("review_status") == "human_approved"
+        and pair.get("meaning_preserved") is True
+        and bool(pair.get("reviewer_id"))
+        and src.get("kind") in {"human_revision", "public_dataset"}
+        and src.get("license") in ALLOWED_LICENSES
+    ):
+        return False
+    if src.get("kind") == "public_dataset":
+        # Dataset records must retain verifiable source and licence evidence;
+        # JSON Schema's optional format checking alone is not sufficient here.
+        return (
+            src.get("text_mining_permitted") is True
+            and _is_https_url(src.get("url"))
+            and _is_https_url(src.get("license_evidence"))
+        )
+    return True
 class RevisionCorpus:
     def __init__(self, pairs: list[dict[str, Any]]):
         self.pairs = [pair for pair in pairs if eligible(pair)]
