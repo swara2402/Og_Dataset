@@ -64,3 +64,15 @@ def test_latex_export_rejects_overlapping_source_offsets():
     job = SimpleNamespace(file_type="tex", original_bytes=source.encode(), document=document, paragraphs=states)
     with pytest.raises(ValueError, match="offsets overlap"):
         _latex_text(job)
+
+@pytest.mark.parametrize(
+    "original,revised",
+    [
+        (r"Keep this figure \\begin{figure} stable.", r"Keep this figure \\begin{table} stable."),
+        (r"See the image \\includegraphics{figures/result.png}.", r"See the image \\includegraphics{figures/other.png}."),
+        (r"Use the \\usepackage{amsmath} package.", r"Use the \\usepackage{graphicx} package."),
+    ],
+)
+def test_latex_export_rejects_changes_to_environment_and_resource_arguments(original, revised):
+    with pytest.raises(ValueError, match="changes commands, references or special syntax"):
+        _latex_text(make_job(original, original, revised))
