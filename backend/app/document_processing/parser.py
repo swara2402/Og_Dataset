@@ -549,7 +549,7 @@ class MarkdownParser:
     @staticmethod
     def _parse_markdown(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
-        blocks: List[tuple[str, str | None, int, bool]] = []
+        blocks: List[tuple[str, str | None, str, int, bool]] = []
         current: List[str] = []
         fence_char: str | None = None
         fence_length = 0
@@ -559,13 +559,13 @@ class MarkdownParser:
         def flush(kind: str | None = None, language: str = "", start_line: int = 0, closed: bool = True) -> None:
             nonlocal current
             if current:
-                blocks.append(("\\n".join(current), kind, start_line, closed))
+                blocks.append(("\n".join(current), kind, language, start_line, closed))
                 current = []
 
         for line_number, line in enumerate(content.splitlines(), start=1):
             stripped = line.lstrip()
             if fence_char is None:
-                opening = re.match(r"^(`{3,}|~{3,})(.*)$", stripped)
+                opening = re.match(r"^(\x60{3,}|~{3,})(.*)$", stripped)
                 if opening:
                     flush()
                     fence_char = opening.group(1)[0]
@@ -581,7 +581,7 @@ class MarkdownParser:
                 continue
 
             current.append(line)
-            closing = re.match(r"^([\\`~]+)\\s*$", stripped)
+            closing = re.match(r"^([\x60~]+)\s*$", stripped)
             if closing and closing.group(1)[0] == fence_char and len(closing.group(1)) >= fence_length and set(closing.group(1)) == {fence_char}:
                 flush("code", fence_language, fence_start, True)
                 fence_char = None
@@ -594,11 +594,11 @@ class MarkdownParser:
         else:
             flush()
 
-        for index, (block, forced_type, start_line, closed) in enumerate(blocks, start=1):
+        for index, (block, forced_type, language, start_line, closed) in enumerate(blocks, start=1):
             if forced_type == "code":
                 fence_lines = block.splitlines()
                 code_lines = fence_lines[1:-1] if closed and len(fence_lines) >= 2 else fence_lines[1:]
-                text = "\\n".join(code_lines)
+                text = "\n".join(code_lines)
                 paragraphs.append(DocumentParagraph(
                     id=f"md_{index}",
                     text=text,
@@ -606,7 +606,7 @@ class MarkdownParser:
                     location=f"markdown.{index}",
                     metadata={
                         "code_block": True,
-                        "fence_language": fence_language if False else "",
+                        "fence_language": language,
                         "source_line": start_line,
                         "closed_fence": closed,
                     },
