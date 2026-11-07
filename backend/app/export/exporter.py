@@ -203,6 +203,14 @@ def _markdown_text(job: Job) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _latex_structure_signature(value: str) -> tuple[str, ...]:
+    """Return TeX commands and unescaped structural/special tokens in order."""
+    return tuple(
+        re.findall(r"\\\\(?:[A-Za-z@]+|.)|(?<!\\\\)[{}]|(?<!\\\\)[%def _latex_text(job: Job) -> str:
+#_^~]", value)
+    )
+
+
 def _latex_text(job: Job) -> str:
     """Splice accepted prose edits into the original TeX source by exact offsets."""
     if job.file_type != "tex" or not job.original_bytes:
@@ -223,9 +231,17 @@ def _latex_text(job: Job) -> str:
             raise ValueError("LaTeX source no longer matches parsed paragraph offsets.")
         if state.paragraph_type != "body":
             raise ValueError("Only prose blocks can be exported as LaTeX edits.")
+        if _latex_structure_signature(state.original_text) != _latex_structure_signature(state.current_text):
+            raise ValueError(
+                "LaTeX edit changes commands or special syntax; source was not modified."
+            )
         edits.append((start, end, state.current_text))
 
-    for start, end, replacement in sorted(edits, reverse=True):
+    ordered_edits = sorted(edits)
+    if any(current[0] < previous[1] for previous, current in zip(ordered_edits, ordered_edits[1:])):
+        raise ValueError("LaTeX edit offsets overlap; source was not modified.")
+
+    for start, end, replacement in reversed(ordered_edits):
         source = source[:start] + replacement + source[end:]
     return source
 
