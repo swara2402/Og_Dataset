@@ -10,7 +10,7 @@ from backend.app.export.exporter import _pdf_bytes
 def test_pdf_export_reports_unsupported_unicode_without_low_level_error():
     state = SimpleNamespace(
         review_status="unchanged",
-        current_text="Η ανάλυση εξετάζει δεδομένα.",
+        current_text="中文研究数据分析。",
         original_text="Η ανάλυση εξετάζει δεδομένα.",
         paragraph_type="body",
     )
