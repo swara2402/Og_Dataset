@@ -11,6 +11,7 @@ import statistics
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from jsonschema import Draft202012Validator
 
@@ -61,6 +62,8 @@ def load_manifest(path: Path) -> list[dict]:
             item = json.loads(line)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Manifest line {line_no}: invalid JSON") from exc
+        if not isinstance(item, dict):
+            raise ValueError(f"Manifest line {line_no}: record must be a JSON object")
         required = {"source_id", "title", "license", "text_mining_permitted", "discipline", "sections", "local_text"}
         if not required.issubset(item):
             raise ValueError(f"Manifest line {line_no}: missing {sorted(required - item.keys())}")
@@ -79,6 +82,12 @@ def load_manifest(path: Path) -> list[dict]:
         seen.add(sid)
         if item["license"] != "SYNTHETIC" and item["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"{sid}: licence is not on the reviewed allowlist")
+        if item["license"] != "SYNTHETIC":
+            for field in ("url", "license_evidence"):
+                value = item.get(field)
+                parsed = urlparse(value) if isinstance(value, str) else None
+                if parsed is None or parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+                    raise ValueError(f"{sid}: {field} must be a valid HTTPS URL")
         if item["text_mining_permitted"] is not True:
             raise ValueError(f"{sid}: text_mining_permitted must be explicitly true")
         if not isinstance(item["sections"], list) or not set(item["sections"]).issubset(SECTIONS):
