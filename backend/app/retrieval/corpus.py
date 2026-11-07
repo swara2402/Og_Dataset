@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from backend.app.retrieval.bm25 import BM25Index
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATASET = ROOT / "knowledge_base/datasets/revision_pairs.jsonl"
@@ -12,8 +12,12 @@ ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-
 def _is_https_url(value: Any) -> bool:
     if not isinstance(value, str):
         return False
-    parsed = urlparse(value)
-    return parsed.scheme == "https" and bool(parsed.netloc)
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and bool(hostname and hostname.strip())
 
 
 def eligible(pair: dict[str, Any]) -> bool:
@@ -42,7 +46,7 @@ class RevisionCorpus:
     @classmethod
     def load(cls, path: Path = DEFAULT_DATASET):
         if not path.exists(): return cls([])
-        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8")); validator = Draft202012Validator(schema)
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8")); validator = Draft202012Validator(schema, format_checker=FormatChecker())
         pairs=[]; ids=set(); fingerprints=set()
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip(): continue
