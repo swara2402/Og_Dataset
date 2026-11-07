@@ -313,3 +313,89 @@ def test_editing_safe_paragraph_preserves_docx_comments_package_part():
         assert b"commentRangeStart" in main_document
         assert b"commentRangeEnd" in main_document
         assert b"commentReference" in main_document
+
+
+\n\ndef test_editing_safe_paragraph_preserves_docx_footnotes_package_part():
+    import zipfile
+    from datetime import datetime, timezone
+    from xml.etree import ElementTree as ET
+    from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from backend.app.core.jobs import Job, ParagraphState
+    from backend.app.document_processing.parser import DocumentParser
+    from backend.app.export.exporter import _docx_bytes
+
+    document = Document()
+    document.add_paragraph("The primary result was recorded .")
+    footnoted = document.add_paragraph("This statement has a footnote")
+    reference_run = OxmlElement("w:r")
+    reference = OxmlElement("w:footnoteReference")
+    reference.set(qn("w:id"), "1")
+    reference_run.append(reference)
+    footnoted._p.append(reference_run)
+
+    initial = io.BytesIO()
+    document.save(initial)
+    source = initial.getvalue()
+    source_buffer = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source), "r") as original, zipfile.ZipFile(source_buffer, "w") as patched:
+        for item in original.infolist():
+            data = original.read(item.filename)
+            if item.filename == "word/_rels/document.xml.rels":
+                root = ET.fromstring(data)
+                ET.SubElement(root, "{http://schemas.openxmlformats.org/package/2006/relationships}Relationship", {
+                    "Id": "rIdFootnotesTest",
+                    "Type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes",
+                    "Target": "footnotes.xml",
+                })
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            elif item.filename == "[Content_Types].xml":
+                root = ET.fromstring(data)
+                ET.SubElement(root, "{http://schemas.openxmlformats.org/package/2006/content-types}Override", {
+                    "PartName": "/word/footnotes.xml",
+                    "ContentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml",
+                })
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            patched.writestr(item, data)
+        patched.writestr(
+            "word/footnotes.xml",
+            b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            b'<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            b'<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>'
+            b'<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote>'
+            b'<w:footnote w:id="1"><w:p><w:r><w:t>Supporting source note.</w:t></w:r></w:p></w:footnote>'
+            b'</w:footnotes>',
+        )
+
+    raw = source_buffer.getvalue()
+    parsed = DocumentParser.parse_bytes(raw, "footnotes.docx")
+    states = [
+        ParagraphState(
+            id=item.id, index=index, original_text=item.text,
+            paragraph_type=item.paragraph_type, category="general", section=None,
+            eligible=True, masked_text=item.text,
+        )
+        for index, item in enumerate(parsed.paragraphs)
+    ]
+    edited = next(state for state in states if state.original_text == "The primary result was recorded .")
+    edited.current_text = "The primary result was recorded."
+    edited.review_status = "accepted"
+    job = Job(
+        job_id="docx-footnotes-preservation-test", filename="footnotes.docx", file_type="docx",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        created_at=datetime.now(timezone.utc).isoformat(), style="academic", options={},
+        document=parsed, paragraphs=states, original_bytes=raw,
+    )
+
+    with zipfile.ZipFile(io.BytesIO(_docx_bytes(job)), "r") as exported:
+        assert "word/footnotes.xml" in exported.namelist()
+        footnotes = exported.read("word/footnotes.xml")
+        assert b"Supporting source note." in footnotes
+        relationships = ET.fromstring(exported.read("word/_rels/document.xml.rels"))
+        assert any(
+            relation.attrib.get("Type", "").endswith("/footnotes")
+            and relation.attrib.get("Target") == "footnotes.xml"
+            for relation in relationships
+        )
+        assert b"footnoteReference" in exported.read("word/document.xml")
