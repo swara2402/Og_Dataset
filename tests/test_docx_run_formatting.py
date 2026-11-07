@@ -161,3 +161,26 @@ def test_hyperlink_paragraph_is_preserved_and_reported_as_not_rewritten():
     assert exported.part.rels[relationship_id].target_ref == "https://example.org/source"
     assert exported.paragraphs[0].text == item.text
     assert any("1 accepted edit(s) were not applied" in note for note in export_notes(job, "docx"))
+
+
+def test_nested_table_accepted_edit_is_applied_without_flattening_docx():
+    from docx import Document
+    from backend.app.export.exporter import _docx_bytes
+
+    document = Document()
+    outer = document.add_table(rows=1, cols=1)
+    nested = outer.cell(0, 0).add_table(rows=1, cols=1)
+    nested.cell(0, 0).text = "The nested result was recorded ."
+
+    job, states = _make_docx_job(document, filename="nested-edit.docx")
+    nested_state = next(
+        state for state in states
+        if state.paragraph_type == "table"
+        and state.original_text == "The nested result was recorded ."
+    )
+    nested_state.current_text = "The nested result was recorded."
+    nested_state.review_status = "accepted"
+
+    exported = Document(io.BytesIO(_docx_bytes(job)))
+    exported_nested = exported.tables[0].cell(0, 0).tables[0]
+    assert exported_nested.cell(0, 0).text == "The nested result was recorded."
