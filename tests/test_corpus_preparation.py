@@ -154,9 +154,12 @@ def test_manifest_rejects_non_object_json_records(tmp_path, record):
     [
         ("url", "http://example.test/paper"),
         ("url", "javascript:alert(1)"),
+        ("url", "https://example.test:not-a-port/paper"),
+        ("url", "https://example.test:99999/paper"),
         ("license_evidence", "http://example.test/licence"),
         ("license_evidence", "file:///etc/passwd"),
         ("license_evidence", "https://user:pass@example.test/licence"),
+        ("license_evidence", "https://example.test:invalid/licence"),
     ],
 )
 def test_manifest_requires_https_provenance_urls(tmp_path, field, value):
