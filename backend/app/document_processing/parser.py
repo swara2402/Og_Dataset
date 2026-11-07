@@ -295,7 +295,7 @@ class PDFParser:
     def parse(file_path: Path, filename: str) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(str(file_path))
-            return PDFParser._extract_paragraphs(doc, filename)
+            return PDFParser._parse_fitz_document(doc, filename)
         if PYPDF_AVAILABLE:
             reader = PypdfReader(str(file_path))
             return PDFParser._extract_with_pypdf(reader, filename)
@@ -308,7 +308,10 @@ class PDFParser:
     def parse_bytes(data: bytes, filename: str, *, enable_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(stream=data, filetype="pdf")
-            return PDFParser._extract_paragraphs(doc, filename, enable_ocr=enable_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
+            return PDFParser._parse_fitz_document(
+                doc, filename, enable_ocr=enable_ocr,
+                ocr_language=ocr_language, ocr_dpi=ocr_dpi,
+            )
         if PYPDF_AVAILABLE:
             reader = PypdfReader(io.BytesIO(data))
             parsed = PDFParser._extract_with_pypdf(reader, filename)
@@ -325,6 +328,14 @@ class PDFParser:
             "'pip install pymupdf' or 'pip install pypdf'."
         )
     
+    @staticmethod
+    def _parse_fitz_document(doc: Any, filename: str, **options: Any) -> ParsedDocument:
+        """Extract a PDF and always release the PyMuPDF document handle."""
+        try:
+            return PDFParser._extract_paragraphs(doc, filename, **options)
+        finally:
+            doc.close()
+
     @staticmethod
     def _quality_metadata(page_texts: List[str], extractor: str) -> Dict[str, Any]:
         lengths = [len(text.strip()) for text in page_texts]
