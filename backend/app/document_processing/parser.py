@@ -622,6 +622,37 @@ class MarkdownParser:
                 ))
                 continue
 
+            # Protect simple top-level indented Markdown code blocks. Every
+            # nonblank line must retain its four-space/tab indentation; mixed
+            # prose/code blocks are left to the ordinary paragraph path.
+            block_lines = block.splitlines()
+            nonblank_lines = [line for line in block_lines if line.strip()]
+            if nonblank_lines and all(
+                line.startswith("    ") or line.startswith("\\t")
+                for line in nonblank_lines
+            ):
+                code_lines = [
+                    line[4:] if line.startswith("    ")
+                    else line[1:] if line.startswith("\\t")
+                    else line
+                    for line in block_lines
+                ]
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text="\\n".join(code_lines),
+                    paragraph_type="code",
+                    location=f"markdown.{index}",
+                    metadata={
+                        "code_block": True,
+                        "fenced": False,
+                        "fence_language": "",
+                        "fence_char": "`",
+                        "source_line": start_line,
+                        "closed_fence": True,
+                    },
+                ))
+                continue
+
             block = block.strip()
             if not block:
                 continue
