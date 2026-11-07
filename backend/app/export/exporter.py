@@ -44,6 +44,19 @@ def _export_text(state: ParagraphState) -> str:
     return state.original_text
 
 
+def _docx_paragraph_is_safe_to_rewrite(paragraph: DocxParagraph) -> bool:
+    """Allow only plain text runs; preserve tabs, breaks, fields and embedded objects."""
+    for child in paragraph._p.iterchildren():
+        if child.tag == qn("w:pPr"):
+            continue
+        if child.tag != qn("w:r"):
+            return False
+        for run_child in child.iterchildren():
+            if run_child.tag not in {qn("w:rPr"), qn("w:t")}:
+                return False
+    return True
+
+
 def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> bool:
     """Apply an accepted text edit while retaining safe paragraph/run formatting.
 
@@ -54,9 +67,7 @@ def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> bool:
     if original == text:
         return True
 
-    children = list(paragraph._p.iterchildren())
-    allowed_tags = {qn("w:pPr"), qn("w:r")}
-    if any(child.tag not in allowed_tags for child in children):
+    if not _docx_paragraph_is_safe_to_rewrite(paragraph):
         return False
 
     runs = list(paragraph.runs)
@@ -135,8 +146,7 @@ def _docx_unapplied_edits(job: Job) -> list[str]:
         if state is None or state.review_status != "accepted" or state.current_text == state.original_text:
             continue
         found.add(state.id)
-        children = list(item.original_element._p.iterchildren())
-        if any(child.tag not in {qn("w:pPr"), qn("w:r")} for child in children):
+        if not _docx_paragraph_is_safe_to_rewrite(item.original_element):
             skipped.append(state.id)
             continue
         if "".join(run.text for run in item.original_element.runs) != item.original_element.text:
