@@ -45,18 +45,18 @@ def test_latex_export_rejects_changes_to_tex_commands_or_special_tokens(original
 
 
 def test_latex_export_rejects_overlapping_source_offsets():
-    source = "First block. Second block."
+    source = "abcdefghi"
     first = SimpleNamespace(
-        metadata={"source_start": 0, "source_end": 13},
+        metadata={"source_start": 0, "source_end": 6},
         paragraph_type="body",
     )
     second = SimpleNamespace(
-        metadata={"source_start": 10, "source_end": len(source)},
+        metadata={"source_start": 3, "source_end": len(source)},
         paragraph_type="body",
     )
     states = [
-        SimpleNamespace(review_status="accepted", current_text="First paragraph.", original_text="First block.", paragraph_type="body"),
-        SimpleNamespace(review_status="accepted", current_text="Second paragraph.", original_text="Second block.", paragraph_type="body"),
+        SimpleNamespace(review_status="accepted", current_text="abcxyz", original_text="abcdef", paragraph_type="body"),
+        SimpleNamespace(review_status="accepted", current_text="defxyz", original_text="defghi", paragraph_type="body"),
     ]
     document = SimpleNamespace(paragraphs=[first, second])
     job = SimpleNamespace(file_type="tex", original_bytes=source.encode(), document=document, paragraphs=states)
