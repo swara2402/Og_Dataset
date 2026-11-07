@@ -569,7 +569,12 @@ class MarkdownParser:
             stripped = line[indent:] if indent <= 3 else ""
             if fence_char is None:
                 opening = re.match(r"^(\x60{3,}|~{3,})(.*)$", stripped)
-                if opening:
+                # CommonMark forbids backticks in the info string of a
+                # backtick fence; such a line is ordinary text, not an opener.
+                valid_opening = opening and not (
+                    opening.group(1)[0] == "`" and "`" in opening.group(2)
+                )
+                if valid_opening:
                     flush()
                     fence_char = opening.group(1)[0]
                     fence_length = len(opening.group(1))
