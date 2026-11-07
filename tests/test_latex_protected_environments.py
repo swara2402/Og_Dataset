@@ -67,9 +67,9 @@ import pytest
 )
 def test_additional_math_environments_are_never_classified_as_prose(environment):
     source = (
-        f"\\\\begin{{{environment}}}\n"
+        f"\\begin{{{environment}}}\n"
         "a & = b + c\n"
-        f"\\\\end{{{environment}}}\n\n"
+        f"\\end{{{environment}}}\n\n"
         "This later prose paragraph remains editable."
     )
 
