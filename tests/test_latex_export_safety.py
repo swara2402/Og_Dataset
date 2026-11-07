@@ -37,8 +37,8 @@ def test_latex_export_allows_prose_change_without_tex_syntax_change():
         (r"Use \emph{careful wording}.", r"Use \textbf{careful wording}."),
         ("A & B are compared.", "A and B are compared."),
         ("A simple result.", "A simple result #1."),
-        (r"Prior work supports this claim \\cite{smith2020}.", r"Prior work supports this claim \\cite{jones2021}."),
-        (r"See Section \\ref{sec:methods}.", r"See Section \\ref{sec:results}."),
+        (r"Prior work supports this claim \cite{smith2020}.", r"Prior work supports this claim \cite{jones2021}."),
+        (r"See Section \ref{sec:methods}.", r"See Section \ref{sec:results}."),
     ],
 )
 def test_latex_export_rejects_changes_to_tex_commands_or_special_tokens(original, revised):
