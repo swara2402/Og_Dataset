@@ -608,7 +608,7 @@ class LatexParser:
     @staticmethod
     def _classify(block: str) -> str:
         value = block.strip()
-        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|gather\*?|multline\*?|math|displaymath|flalign\*?)\}", value):
+        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|alignat\*?|gather\*?|gathered|multline\*?|math|displaymath|flalign\*?|eqnarray\*?|split|cases|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix)\}", value):
             return "equation"
         if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
@@ -637,6 +637,11 @@ class LatexParser:
         block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
         protected_environments = {
             "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            "equation", "equation*", "align", "align*", "alignat", "alignat*",
+            "gather", "gather*", "gathered", "multline", "multline*",
+            "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
+            "displaymath", "split", "cases", "array", "matrix", "pmatrix",
+            "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
             "figure", "figure*", "table", "table*", "tabular", "tabular*",
             "longtable", "tikzpicture", "algorithm", "algorithm*",
             "algorithmic", "picture", "minipage",
