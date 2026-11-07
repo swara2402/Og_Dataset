@@ -81,3 +81,16 @@ def test_backtick_in_info_string_does_not_open_fenced_code_block():
     assert len(parsed.paragraphs) == 1
     assert parsed.paragraphs[0].paragraph_type == "body"
     assert parsed.paragraphs[0].text == source
+
+
+
+def test_indented_markdown_code_is_classified_as_protected_code():
+    source = "    def calculate():\\n        return 42\\n\\n    print(calculate())"
+
+    parsed = MarkdownParser.parse_bytes(source.encode("utf-8"), "sample.md")
+
+    assert len(parsed.paragraphs) == 1
+    code = parsed.paragraphs[0]
+    assert code.paragraph_type == "code"
+    assert code.text == "def calculate():\\n    return 42\\n\\nprint(calculate())"
+    assert code.metadata["fenced"] is False
