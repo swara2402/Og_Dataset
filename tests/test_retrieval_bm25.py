@@ -36,3 +36,34 @@ def test_aries_import_never_marks_pair_approved():
     assert not list(Draft202012Validator(schema).iter_errors(pair))
     assert pair["review_status"]=="pending_review" and pair["meaning_preserved"] is False
     assert pair["aries_metadata"]["exact_parity"] is True
+
+
+
+def test_approved_public_pairs_require_https_source_and_license_evidence():
+    base = {
+        "pair_id": "public-1",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "The model use a neural network.",
+        "edited_text": "The model uses a neural network.",
+        "edit_types": ["grammar"],
+        "rationale": "Subject-verb agreement correction.",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "public_dataset",
+            "reference": "paper-1",
+            "license": "CC-BY-4.0",
+            "attribution": "Author et al.",
+            "url": "https://example.org/paper",
+            "license_evidence": "https://example.org/license",
+            "text_mining_permitted": True,
+        },
+    }
+    assert len(RevisionCorpus([base]).search("neural network")) == 1
+
+    missing_evidence = {**base, "pair_id": "public-2", "source": {**base["source"], "license_evidence": ""}}
+    insecure_source = {**base, "pair_id": "public-3", "source": {**base["source"], "url": "http://example.org/paper"}}
+    insecure_evidence = {**base, "pair_id": "public-4", "source": {**base["source"], "license_evidence": "javascript:alert(1)"}}
+    assert RevisionCorpus([missing_evidence, insecure_source, insecure_evidence]).search("neural network") == []
