@@ -195,17 +195,29 @@ def _plain_text(job: Job) -> str:
 
 def _markdown_text(job: Job) -> str:
     parts: List[str] = []
-    for state in job.paragraphs:
-        text = _export_text(state).strip()
-        if not text:
+    source_paragraphs = getattr(getattr(job, "document", None), "paragraphs", [])
+    for index, state in enumerate(job.paragraphs):
+        raw_text = _export_text(state)
+        if not raw_text.strip():
             continue
+        text = raw_text.strip()
         if state.paragraph_type == "heading":
             if not text.startswith("#"):
                 parts.append(f"## {text}")
             else:
                 parts.append(text)
         elif state.paragraph_type == "code":
-            parts.append(f"```\n{text}\n```")
+            source_metadata = (
+                source_paragraphs[index].metadata
+                if index < len(source_paragraphs)
+                else {}
+            )
+            language = str(source_metadata.get("fence_language", "")).strip()
+            fence_char = "~" if "`" in language else "`"
+            runs = re.findall(re.escape(fence_char) + r"+", raw_text)
+            fence_length = max(3, max((len(run) for run in runs), default=0) + 1)
+            fence = fence_char * fence_length
+            parts.append(f"{fence}{language}\n{raw_text.rstrip()}\n{fence}")
         elif state.paragraph_type == "reference":
             parts.append(f"- {text}")
         else:
