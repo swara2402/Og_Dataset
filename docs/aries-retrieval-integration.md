@@ -20,8 +20,22 @@ Inspect the rejection report and every imported record. Do not merge into the ca
 
 GET /api/v1/retrieval/examples?query=neural%20network&discipline=computer%20science&section=methods&edit_type=clarity&limit=5
 
-The endpoint filters metadata before BM25 ranking and returns only human-approved, meaning-preserved, reviewer-attributed, licence-eligible pairs. It returns original/revised examples, rationale, attribution, source licence, paper ID and parity audit metadata. It never applies edits. BM25 is pure Python and makes no network or model calls. The frontend examples panel remains a separate milestone.
+The endpoint filters metadata before BM25 ranking and returns only human-approved, meaning-preserved, reviewer-attributed, licence-eligible pairs. It returns original/revised examples, rationale, attribution, source licence, paper ID and parity audit metadata. It never applies edits. BM25 is pure Python and makes no network or model calls. The frontend examples panel is implemented in the Document Workspace.
 
-## Evaluation
+## Retrieval evaluation
+
+Evaluation requires a separately prepared JSONL file of human relevance judgements. Each line has a query, a non-empty list of relevant eligible pair IDs, and optional filters:
+
+    {"query":"neural network classification","relevant_pair_ids":["pair-001"],"filters":{"discipline":"computer science","section":"methods"}}
+
+Run:
+
+    python scripts/evaluate_retrieval.py --judgements /path/to/relevance_judgements.jsonl --k 1 --k 3 --k 5 --output reports/retrieval-evaluation.json
+
+The report includes macro-averaged precision@k, recall@k and reciprocal-rank@k, plus per-query metrics. Labels are never inferred by the evaluator. IDs absent from the currently eligible corpus are rejected, preventing pending/unreviewed examples from being treated as ground truth. Use independent reviewers and keep query/judgement creation separate from corpus reconstruction; split relevance sets by paper ID when developing and tuning ranking behavior to avoid paper-level leakage.
+
+No real labelled query set is bundled, so no relevance score is claimed. Once a licensed, human-approved corpus and independently judged query set exist, run the evaluator and record the results.
+
+## Evaluation limits
 
 Split train/evaluation by paper ID to prevent leakage. Measure precision@k and recall@k with human relevance labels. Test discipline/section/edit filters, approval gating, protected claims, uncertainty, citations, terminology, latency and index memory independently.
