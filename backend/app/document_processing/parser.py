@@ -635,19 +635,22 @@ class LatexParser:
     def _parse_content(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
-        protected_environments = {
-            "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+        math_environments = {
             "equation", "equation*", "align", "align*", "alignat", "alignat*",
             "gather", "gather*", "gathered", "multline", "multline*",
             "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
             "displaymath", "split", "cases", "array", "matrix", "pmatrix",
             "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
+        }
+        protected_environments = {
+            "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            *math_environments,
             "figure", "figure*", "table", "table*", "tabular", "tabular*",
             "longtable", "tikzpicture", "algorithm", "algorithm*",
             "algorithmic", "picture", "minipage",
         }
         active_environments: list[str] = []
-        environment_pattern = re.compile(r"\\(begin|end)\s*\{([^}]+)\}")
+        environment_pattern = re.compile(r"\\(begin|end)\\s*\\{([^}]+)\\}")
         for index, match in enumerate(block_pattern.finditer(content), start=1):
             block = match.group(0)
             start, end = match.span()
@@ -665,10 +668,22 @@ class LatexParser:
                         reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
                         active_environments = active_environments[:reverse_index]
             paragraph_type = LatexParser._classify(block)
+            protected_context = [
+                *active_environments,
+                *(environment for _, environment in environment_pattern.findall(block)),
+            ]
             if was_inside_protected or starts_protected or any(
                 env in protected_environments for env in active_environments
             ):
-                paragraph_type = "code"
+                # Math remains a distinct non-editable equation type. Other
+                # protected containers (figures, code, tables, diagrams) take
+                # precedence when math is nested inside them.
+                if any(env in protected_environments - math_environments for env in protected_context):
+                    paragraph_type = "code"
+                elif any(env in math_environments for env in protected_context):
+                    paragraph_type = "equation"
+                else:
+                    paragraph_type = "code"
             paragraphs.append(DocumentParagraph(
                 id=f"tex_block_{index}",
                 text=block,
