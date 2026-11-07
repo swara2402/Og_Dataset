@@ -55,3 +55,22 @@ def test_markdown_export_preserves_tilde_fence_language():
     reparsed = MarkdownParser.parse_bytes(exported.encode("utf-8"), "roundtrip.md")
     assert reparsed.paragraphs[0].metadata["fence_language"] == "sql"
     assert reparsed.paragraphs[0].text == "SELECT * FROM papers;"
+
+
+
+def test_markdown_export_preserves_trailing_blank_lines_inside_code():
+    source = "```python\nprint('x')\n\n```\n"
+    exported = _export_parsed_markdown(source)
+    reparsed = MarkdownParser.parse_bytes(exported.encode("utf-8"), "roundtrip.md")
+
+    assert reparsed.paragraphs[0].text == "print('x')\n"
+
+
+def test_markdown_export_keeps_empty_code_fence():
+    source = "```text\n```\n"
+    exported = _export_parsed_markdown(source)
+    reparsed = MarkdownParser.parse_bytes(exported.encode("utf-8"), "roundtrip.md")
+
+    assert len(reparsed.paragraphs) == 1
+    assert reparsed.paragraphs[0].paragraph_type == "code"
+    assert reparsed.paragraphs[0].text == ""
