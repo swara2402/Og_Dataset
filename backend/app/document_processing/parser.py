@@ -563,7 +563,10 @@ class MarkdownParser:
                 current = []
 
         for line_number, line in enumerate(content.splitlines(), start=1):
-            stripped = line.lstrip()
+            # CommonMark fenced blocks may be indented by at most three spaces.
+            # Four-space-indented fence-like text is code content, not a delimiter.
+            indent = len(line) - len(line.lstrip(" "))
+            stripped = line[indent:] if indent <= 3 else ""
             if fence_char is None:
                 opening = re.match(r"^(\x60{3,}|~{3,})(.*)$", stripped)
                 if opening:
