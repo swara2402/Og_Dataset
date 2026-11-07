@@ -94,3 +94,38 @@ def test_indented_markdown_code_is_classified_as_protected_code():
     assert code.paragraph_type == "code"
     assert code.text == "def calculate():\n    return 42\nprint(calculate())"
     assert code.metadata["fenced"] is False
+
+
+
+def test_indented_markdown_code_keeps_internal_blank_lines_protected():
+    source = (
+        "    def calculate():\n"
+        "        return 42\n"
+        "\n"
+        "    print(calculate())\n"
+        "\n"
+        "Explanation after the code."
+    )
+
+    parsed = MarkdownParser.parse_bytes(source.encode("utf-8"), "sample.md")
+
+    code = [item for item in parsed.paragraphs if item.paragraph_type == "code"]
+    prose = [item for item in parsed.paragraphs if item.paragraph_type == "body"]
+    assert len(code) == 1
+    assert code[0].text == "def calculate():\n    return 42\n\nprint(calculate())"
+    assert code[0].metadata["fenced"] is False
+    assert code[0].metadata["source_line"] == 1
+    assert len(prose) == 1
+    assert prose[0].text == "Explanation after the code."
+
+
+def test_blank_lines_after_indented_code_are_not_absorbed_into_code():
+    source = "    print('safe')\n\n\nOrdinary prose."
+
+    parsed = MarkdownParser.parse_bytes(source.encode("utf-8"), "sample.md")
+
+    assert len(parsed.paragraphs) == 2
+    assert parsed.paragraphs[0].paragraph_type == "code"
+    assert parsed.paragraphs[0].text == "print('safe')"
+    assert parsed.paragraphs[1].paragraph_type == "body"
+    assert parsed.paragraphs[1].text == "Ordinary prose."
