@@ -310,13 +310,7 @@ def _pdf_bytes(job: Job) -> bytes:
         topMargin=0.9 * inch,
         bottomMargin=0.9 * inch,
     )
-    try:
-        document.build(story)
-    except UnicodeError as exc:
-        raise ValueError(
-            "PDF export cannot encode one or more characters with the built-in fonts. "
-            "Export as DOCX or TXT to preserve the original Unicode text."
-        ) from exc
+    document.build(story)
     return buffer.getvalue()
 
 
