@@ -11,6 +11,8 @@ TYPES={"grammar","clarity","precision","coherence","concision","terminology","pu
 def canon(s): return re.sub(r"\s+"," ",s).strip().casefold()
 def valid_https(value): return urlparse(value).scheme == "https" and bool(urlparse(value).netloc)
 def map_record(r):
+    if not isinstance(r, dict):
+        raise ValueError("record must be a JSON object")
     required={"pair_id","paper_id","discipline","section","original_text","edited_text","edit_types","rationale","source_url","license","license_evidence","attribution","text_mining_permitted","exact_parity","normalized_parity","reconstruction_version"}
     missing=sorted(required-r.keys())
     if missing: raise ValueError("missing fields: "+", ".join(missing))
