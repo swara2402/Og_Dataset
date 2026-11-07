@@ -51,6 +51,26 @@ def classify_sentence_opening(words: list[str]) -> str:
     return "other"
 
 
+def _is_valid_https_url(value: object) -> bool:
+    """Accept absolute HTTPS provenance URLs with a valid host and optional port."""
+    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
+        return False
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(hostname)
+        and hostname.strip(".") != ""
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
+
+
 def load_manifest(path: Path) -> list[dict]:
     schema = json.loads(MANIFEST_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
@@ -85,8 +105,7 @@ def load_manifest(path: Path) -> list[dict]:
         if item["license"] != "SYNTHETIC":
             for field in ("url", "license_evidence"):
                 value = item.get(field)
-                parsed = urlparse(value) if isinstance(value, str) else None
-                if parsed is None or parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+                if not _is_valid_https_url(value):
                     raise ValueError(f"{sid}: {field} must be a valid HTTPS URL")
         if item["text_mining_permitted"] is not True:
             raise ValueError(f"{sid}: text_mining_permitted must be explicitly true")
