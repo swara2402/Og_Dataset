@@ -316,11 +316,18 @@ class PDFParser:
             reader = PypdfReader(io.BytesIO(data))
             parsed = PDFParser._extract_with_pypdf(reader, filename)
             if enable_ocr:
+                pages_needing_ocr = sorted(set(
+                    parsed.metadata.get("pages_with_no_text", [])
+                    + parsed.metadata.get("pages_with_little_text", [])
+                ))
                 parsed.metadata.update({
                     "ocr_enabled": True, "ocr_pages": [],
-                    "ocr_unavailable_pages": parsed.metadata.get("pages_with_no_text", []),
+                    "ocr_unavailable_pages": pages_needing_ocr,
                     "ocr_language": ocr_language, "ocr_dpi": ocr_dpi,
-                    "ocr_warning": "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available.",
+                    "ocr_warning": (
+                        "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available."
+                        if pages_needing_ocr else None
+                    ),
                 })
             return parsed
         raise ImportError(
