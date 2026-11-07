@@ -10,6 +10,7 @@ node_modules/
 frontend/dist/
 backend/uploads/*
 backend/exports/*
+data/corpus_raw/
 !backend/uploads/.gitkeep
 !backend/exports/.gitkeep
 .DS_Store
