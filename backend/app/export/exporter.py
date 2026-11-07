@@ -213,7 +213,9 @@ def _markdown_text(job: Job) -> str:
                 else {}
             )
             language = str(source_metadata.get("fence_language", "")).strip()
-            fence_char = "~" if "`" in language else "`"
+            fence_char = source_metadata.get("fence_char", "`")
+            if fence_char not in {"`", "~"}:
+                fence_char = "`"
             runs = re.findall(re.escape(fence_char) + r"+", raw_text)
             fence_length = max(3, max((len(run) for run in runs), default=0) + 1)
             fence = fence_char * fence_length
