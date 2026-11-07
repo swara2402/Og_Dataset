@@ -184,3 +184,37 @@ def test_nested_table_accepted_edit_is_applied_without_flattening_docx():
     exported = Document(io.BytesIO(_docx_bytes(job)))
     exported_nested = exported.tables[0].cell(0, 0).tables[0]
     assert exported_nested.cell(0, 0).text == "The nested result was recorded."
+
+
+
+def test_editing_text_preserves_embedded_docx_image_and_relationship():
+    import base64
+    from docx import Document
+    from backend.app.export.exporter import _docx_bytes
+
+    # Tiny valid PNG fixture; no external image file or network dependency.
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pZ8AAAAASUVORK5CYII="
+    )
+    document = Document()
+    document.add_paragraph("The experimental result was recorded .")
+    image_paragraph = document.add_paragraph()
+    image_paragraph.add_run().add_picture(io.BytesIO(png))
+
+    job, states = _make_docx_job(document, filename="image-preservation.docx")
+    text_state = next(
+        state for state in states
+        if state.original_text == "The experimental result was recorded ."
+    )
+    text_state.current_text = "The experimental result was recorded."
+    text_state.review_status = "accepted"
+
+    exported = Document(io.BytesIO(_docx_bytes(job)))
+    assert len(exported.inline_shapes) == 1
+
+    image_relationship_id = (
+        exported.inline_shapes[0]._inline.graphic.graphicData.pic
+        .blipFill.blip.embed
+    )
+    image_part = exported.part.related_parts[image_relationship_id]
+    assert image_part.blob == png
