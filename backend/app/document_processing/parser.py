@@ -638,3 +638,115 @@ class MarkdownParser:
             paragraphs=paragraphs,
             metadata={"block_count": len(paragraphs)},
         )
+
+
+class LatexParser:
+    """Conservative LaTeX block parser with exact source offsets.
+
+    It does not attempt to fully compile or normalize TeX. Structural commands,
+    math environments, code environments and bibliography blocks are marked
+    non-editable; prose blocks retain source positions for export.
+    """
+
+    @staticmethod
+    def _classify(block: str) -> str:
+        value = block.strip()
+        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|alignat\*?|gather\*?|gathered|multline\*?|math|displaymath|flalign\*?|eqnarray\*?|split|cases|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix)\}", value):
+            return "equation"
+        if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
+            return "equation"
+        if re.search(r"\\begin\s*\{(?:verbatim\*?|lstlisting|minted|alltt|figure\*?|table\*?|tabular\*?|longtable|tikzpicture|algorithm\*?|algorithmic|picture|minipage)\}", value):
+            # Preserve source markup, graphics, layout and structured content.
+            return "code"
+        if re.search(r"\\(?:verb\*?|lstinline)\s*\S", value):
+            return "code"
+        if re.search(r"\\(?:bibliography|bibliographystyle|printbibliography|bibitem)|\\begin\s*\{thebibliography\}", value):
+            return "reference"
+        if re.search(r"\\(?:documentclass|usepackage|newcommand|renewcommand|maketitle|author|date|label)\b|\\(?:begin|end)\s*\{document\}", value):
+            return "front_matter"
+        if re.search(r"\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph|title)\*?\s*\{", value):
+            return "heading"
+        if value.startswith("%") or re.search(r"(?m)^\\s*%", value):
+            return "code"
+        # Inline links and file inclusions can carry targets or assets that
+        # must not be rewritten as ordinary prose.
+        if re.search(r"\\(?:href|url|includegraphics|input|include|lstinputlisting)\b", value):
+            return "code"
+        return "body"
+
+    @staticmethod
+    def _parse_content(content: str, filename: str) -> ParsedDocument:
+        paragraphs: List[DocumentParagraph] = []
+        block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
+        math_environments = {
+            "equation", "equation*", "align", "align*", "alignat", "alignat*",
+            "gather", "gather*", "gathered", "multline", "multline*",
+            "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
+            "displaymath", "split", "cases", "array", "matrix", "pmatrix",
+            "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
+        }
+        protected_environments = {
+            "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            *math_environments,
+            "figure", "figure*", "table", "table*", "tabular", "tabular*",
+            "longtable", "tikzpicture", "algorithm", "algorithm*",
+            "algorithmic", "picture", "minipage",
+        }
+        active_environments: list[str] = []
+        environment_pattern = re.compile(r"\\(begin|end)\s*\{([^}]+)\}")
+        for index, match in enumerate(block_pattern.finditer(content), start=1):
+            block = match.group(0)
+            start, end = match.span()
+            starts_protected = False
+            was_inside_protected = any(
+                env in protected_environments for env in active_environments
+            )
+            for action, environment in environment_pattern.findall(block):
+                if action == "begin":
+                    if environment in protected_environments:
+                        starts_protected = True
+                    active_environments.append(environment)
+                else:
+                    if environment in active_environments:
+                        reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
+                        active_environments = active_environments[:reverse_index]
+            paragraph_type = LatexParser._classify(block)
+            protected_context = [
+                *active_environments,
+                *(environment for _, environment in environment_pattern.findall(block)),
+            ]
+            if was_inside_protected or starts_protected or any(
+                env in protected_environments for env in active_environments
+            ):
+                # Math remains a distinct non-editable equation type. Other
+                # protected containers (figures, code, tables, diagrams) take
+                # precedence when math is nested inside them.
+                if any(env in protected_environments - math_environments for env in protected_context):
+                    paragraph_type = "code"
+                elif any(env in math_environments for env in protected_context):
+                    paragraph_type = "equation"
+                else:
+                    paragraph_type = "code"
+            paragraphs.append(DocumentParagraph(
+                id=f"tex_block_{index}",
+                text=block,
+                paragraph_type=paragraph_type,
+                location=f"tex.{start}:{end}",
+                metadata={"source_start": start, "source_end": end, "format": "latex"},
+            ))
+        return ParsedDocument(
+            filename=filename,
+            file_type="tex",
+            paragraphs=paragraphs,
+            metadata={"source_length": len(content), "format": "latex"},
+        )
+
+    @staticmethod
+    def parse(file_path: Path, filename: str) -> ParsedDocument:
+        content = file_path.read_text(encoding="utf-8")
+        return LatexParser._parse_content(content, filename)
+
+    @staticmethod
+    def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
+        content = data.decode("utf-8")
+        return LatexParser._parse_content(content, filename)
