@@ -71,10 +71,9 @@ def test_four_space_indented_fence_like_line_remains_inside_code_block():
 
 
 
+
 def test_backtick_in_info_string_does_not_open_fenced_code_block():
-    source = "~~~python`invalid
-This remains ordinary text.
-~~~"
+    source = "~~~python\`invalid\nThis remains ordinary text.\n~~~"
 
     parsed = MarkdownParser.parse_bytes(source.encode("utf-8"), "sample.md")
 
