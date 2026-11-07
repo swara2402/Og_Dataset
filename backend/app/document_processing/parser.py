@@ -421,8 +421,9 @@ class PDFParser:
         ocr_dependency_error: str | None = None
         
         for page_num, page in enumerate(doc):
-            page_text = page.get_text("text") or ""
-            if enable_ocr and len(page_text.strip()) < 40:
+            original_page_text = page.get_text("text") or ""
+            page_text = original_page_text
+            if enable_ocr and len(original_page_text.strip()) < 40:
                 try:
                     ocr_text = PDFParser._ocr_page(page, language=ocr_language, dpi=ocr_dpi)
                     if ocr_text.strip():
@@ -433,7 +434,7 @@ class PDFParser:
                     ocr_unavailable_pages.append(page_num + 1)
             page_texts.append(page_text)
             blocks = page.get_text("blocks")
-            if enable_ocr and len((page.get_text("text") or "").strip()) < 40 and page_num + 1 in ocr_pages:
+            if enable_ocr and len(original_page_text.strip()) < 40 and page_num + 1 in ocr_pages:
                 blocks = []
                 for block_text in re.split(r"\n\s*\n", page_text):
                     block_text = block_text.strip()
