@@ -52,3 +52,19 @@ def test_unclosed_markdown_fence_fails_closed_to_end_of_file():
     assert parsed.paragraphs[0].paragraph_type == "code"
     assert parsed.paragraphs[0].text == "print('safe')\n\n# not a heading\nstill code"
     assert parsed.paragraphs[0].metadata["closed_fence"] is False
+
+
+def test_four_space_indented_fence_like_line_remains_inside_code_block():
+    source = (
+        "```python\n"
+        "print('before')\n"
+        "    ```\n"
+        "print('after')\n"
+        "```\n"
+    )
+
+    parsed = MarkdownParser.parse_bytes(source.encode("utf-8"), "sample.md")
+
+    assert len(parsed.paragraphs) == 1
+    assert parsed.paragraphs[0].paragraph_type == "code"
+    assert parsed.paragraphs[0].text == "print('before')\n    ```\nprint('after')"
