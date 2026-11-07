@@ -198,7 +198,7 @@ def _markdown_text(job: Job) -> str:
     source_paragraphs = getattr(getattr(job, "document", None), "paragraphs", [])
     for index, state in enumerate(job.paragraphs):
         raw_text = _export_text(state)
-        if not raw_text.strip():
+        if not raw_text.strip() and state.paragraph_type != "code":
             continue
         text = raw_text.strip()
         if state.paragraph_type == "heading":
@@ -219,7 +219,7 @@ def _markdown_text(job: Job) -> str:
             runs = re.findall(re.escape(fence_char) + r"+", raw_text)
             fence_length = max(3, max((len(run) for run in runs), default=0) + 1)
             fence = fence_char * fence_length
-            parts.append(f"{fence}{language}\n{raw_text.rstrip()}\n{fence}")
+            parts.append(f"{fence}{language}\n{raw_text}\n{fence}")
         elif state.paragraph_type == "reference":
             parts.append(f"- {text}")
         else:
