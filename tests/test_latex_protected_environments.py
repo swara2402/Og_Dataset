@@ -52,3 +52,32 @@ def test_latex_unclosed_protected_environment_fails_closed_for_following_blocks(
 
     assert parsed.paragraphs
     assert all(item.paragraph_type == "code" for item in parsed.paragraphs)
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [
+        "alignat", "alignat*", "eqnarray", "eqnarray*", "gathered",
+        "split", "cases", "array", "matrix", "pmatrix", "bmatrix",
+        "Bmatrix", "vmatrix", "Vmatrix",
+    ],
+)
+def test_additional_math_environments_are_never_classified_as_prose(environment):
+    source = (
+        f"\\\\begin{{{environment}}}\n"
+        "a & = b + c\n"
+        f"\\\\end{{{environment}}}\n\n"
+        "This later prose paragraph remains editable."
+    )
+
+    parsed = LatexParser.parse_bytes(source.encode("utf-8"), "math.tex")
+
+    math_blocks = [item for item in parsed.paragraphs if environment in item.text or "a & = b + c" in item.text]
+    prose_blocks = [item for item in parsed.paragraphs if "later prose paragraph" in item.text]
+    assert math_blocks
+    assert all(item.paragraph_type in {"equation", "code"} for item in math_blocks)
+    assert len(prose_blocks) == 1
+    assert prose_blocks[0].paragraph_type == "body"
