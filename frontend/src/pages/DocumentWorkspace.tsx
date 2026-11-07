@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import AcademicExamplesPanel from '../components/AcademicExamplesPanel';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -420,6 +421,8 @@ export default function DocumentWorkspace() {
           <div className="card"><p className="text-sm text-neutral-500">Needs review</p><p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{reviewItems.length}</p><p className="mt-1 text-xs text-neutral-500">{warningCount} warning messages</p></div>
           <div className="card"><p className="text-sm text-neutral-500">Protected items</p><p className="text-2xl font-bold">{protectedCount}</p><p className="mt-1 text-xs text-neutral-500">Citations, numbers, URLs, etc.</p></div>
         </div>
+
+        <AcademicExamplesPanel initialQuery={selected?.revised || results.results.slice(0, 2).map((item) => item.revised).join(' ')} />
 
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900/40">
           <p className="font-semibold text-neutral-800 dark:text-neutral-100">How to read these results</p>
