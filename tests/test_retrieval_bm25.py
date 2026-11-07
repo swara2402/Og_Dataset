@@ -7,6 +7,11 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 def test_tokenize(): assert tokenize("Neural-network METHODS")==["neural-network","methods"]
+def test_tokenize_preserves_unicode_academic_terms():
+    assert tokenize("Méthodes naïve-Bayes Ελληνικά") == ["méthodes", "naïve-bayes", "ελληνικά"]
+def test_bm25_retrieves_unicode_terms():
+    hits=BM25Index(["Analyse des données scientifiques","qualitative interview discussion"]).search("données scientifiques")
+    assert hits and hits[0].index==0 and hits[0].score>0
 def test_bm25_relevant_first():
     hits=BM25Index(["neural network classification methods","qualitative interview discussion"]).search("neural network")
     assert hits and hits[0].index==0 and hits[0].score>0
