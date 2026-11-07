@@ -123,7 +123,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, help="optional JSON report path")
     args = parser.parse_args()
     report = evaluate_queries(RevisionCorpus.load(), load_judgements(args.judgements), args.k or [1, 3, 5])
-    rendered = json.dumps(report, indent=2, ensure_ascii=False) + "\\n"
+    rendered = json.dumps(report, indent=2, ensure_ascii=False) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered, encoding="utf-8")
