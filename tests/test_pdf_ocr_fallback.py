@@ -29,7 +29,7 @@ def test_ocr_replaces_sparse_page_text_and_uses_cached_original_text(monkeypatch
     document = FakePdfDocument(page)
     monkeypatch.setattr(
         PDFParser, "_ocr_page",
-        staticmethod(lambda page, *, language, dpi: "INTRODUCTION\\n\\nRecognized academic text."),
+        staticmethod(lambda page, *, language, dpi: "INTRODUCTION\n\nRecognized academic text."),
     )
 
     parsed = PDFParser._extract_paragraphs(
