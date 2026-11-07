@@ -3,13 +3,18 @@ import math, re
 from collections import Counter
 from dataclasses import dataclass
 from typing import Sequence
-_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*", re.UNICODE)
+
+# Unicode-aware letters/digits, excluding underscores, with internal apostrophes/hyphens.
+_TOKEN_RE = re.compile(r"[^\W_]+(?:['’-][^\W_]+)*", re.UNICODE)
+
 def tokenize(text: str) -> list[str]:
     return [t.casefold().replace("’", "'") for t in _TOKEN_RE.findall(text)]
+
 @dataclass(frozen=True)
 class SearchHit:
     index: int
     score: float
+
 class BM25Index:
     """Dependency-free BM25 scorer. Apply metadata filters before indexing."""
     def __init__(self, documents: Sequence[str], *, k1: float = 1.5, b: float = 0.75):
