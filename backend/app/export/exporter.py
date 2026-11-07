@@ -205,7 +205,21 @@ def _markdown_text(job: Job) -> str:
 
 def _latex_structure_signature(value: str) -> tuple[str, ...]:
     """Return TeX commands and unescaped structural/special tokens in order."""
+    pattern = r"\\(?:[A-Za-z@]+|.)|(?<!\\)[\x7b\x7d]|(?<!\\)[%def _latex_structure_signature(value: str) -> tuple[str, ...]:
+    """Return TeX commands and unescaped structural/special tokens in order."""
     pattern = r"\\(?:[A-Za-z@]+|.)|(?<!\\)[\x7b\x7d]|(?<!\\)[%$&#_^~]"
+    return tuple(re.findall(pattern, value))
+#_^~]"
+    return tuple(re.findall(pattern, value))
+
+
+def _latex_reference_signature(value: str) -> tuple[str, ...]:
+    """Keep citation keys, labels, references and resource paths byte-for-byte."""
+    pattern = (
+        r"\\(?:cite[a-zA-Z]*|ref|eqref|pageref|label|autoref|cref|Cref|"
+        r"nameref|hyperref|url|bibliography|addbibresource)\\?"
+        r"(?:\\[[^\\]]*\\])*\\s*\\{[^{}]*\\}"
+    )
     return tuple(re.findall(pattern, value))
 
 
@@ -229,9 +243,12 @@ def _latex_text(job: Job) -> str:
             raise ValueError("LaTeX source no longer matches parsed paragraph offsets.")
         if state.paragraph_type != "body":
             raise ValueError("Only prose blocks can be exported as LaTeX edits.")
-        if _latex_structure_signature(state.original_text) != _latex_structure_signature(state.current_text):
+        if (
+            _latex_structure_signature(state.original_text) != _latex_structure_signature(state.current_text)
+            or _latex_reference_signature(state.original_text) != _latex_reference_signature(state.current_text)
+        ):
             raise ValueError(
-                "LaTeX edit changes commands or special syntax; source was not modified."
+                "LaTeX edit changes commands, references or special syntax; source was not modified."
             )
         edits.append((start, end, state.current_text))
 
