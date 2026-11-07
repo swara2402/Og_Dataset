@@ -607,6 +607,7 @@ class MarkdownParser:
                     metadata={
                         "code_block": True,
                         "fence_language": language,
+                        "fence_char": block.lstrip()[:1] if block.lstrip()[:1] in {"`", "~"} else "`",
                         "source_line": start_line,
                         "closed_fence": closed,
                     },
