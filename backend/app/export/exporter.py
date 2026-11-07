@@ -205,7 +205,7 @@ def _markdown_text(job: Job) -> str:
 
 def _latex_structure_signature(value: str) -> tuple[str, ...]:
     """Return TeX commands and unescaped structural/special tokens in order."""
-    pattern = r"\\\\(?:[A-Za-z@]+|.)|(?<!\\\\)[\\x7b\\x7d]|(?<!\\\\)[%$&#_^~]"
+    pattern = r"\\(?:[A-Za-z@]+|.)|(?<!\\)[\x7b\x7d]|(?<!\\)[%$&#_^~]"
     return tuple(re.findall(pattern, value))
 
 
