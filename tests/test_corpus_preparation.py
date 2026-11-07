@@ -195,7 +195,7 @@ def test_corpus_builder_counts_unicode_words_and_sentence_boundaries(tmp_path, m
     raw = tmp_path / "raw"
     raw.mkdir()
     (raw / "paper.txt").write_text(
-        "[SECTION: abstract]\\nÉvaluation des méthodes robustes. Η ανάλυση εξετάζει δεδομένα.",
+        "[SECTION: abstract]\nÉvaluation des méthodes robustes. Η ανάλυση εξετάζει δεδομένα.",
         encoding="utf-8",
     )
     manifest = tmp_path / "sources.jsonl"
