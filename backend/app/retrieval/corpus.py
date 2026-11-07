@@ -15,7 +15,7 @@ def eligible(pair: dict[str, Any]) -> bool:
             and src.get("license") in ALLOWED_LICENSES
             and (src.get("kind") != "public_dataset" or src.get("text_mining_permitted") is True))
 class RevisionCorpus:
-    def __init__(self, pairs: list[dict[str, Any]]): self.pairs = pairs
+    def __init__(self, pairs: list[dict[str, Any]]): self.pairs = [pair for pair in pairs if eligible(pair)]
     @classmethod
     def load(cls, path: Path = DEFAULT_DATASET):
         if not path.exists(): return cls([])
