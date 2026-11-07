@@ -189,3 +189,24 @@ def test_corpus_builder_rejects_symlinked_input_directory(tmp_path, monkeypatch)
     ])
     with pytest.raises(ValueError, match="input directory must not be a symbolic link"):
         main()
+
+
+def test_corpus_builder_counts_unicode_words_and_sentence_boundaries(tmp_path, monkeypatch):
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "paper.txt").write_text(
+        "[SECTION: abstract]\\nÉvaluation des méthodes robustes. Η ανάλυση εξετάζει δεδομένα.",
+        encoding="utf-8",
+    )
+    manifest = tmp_path / "sources.jsonl"
+    manifest.write_text(json.dumps(_valid_manifest_record()) + chr(10), encoding="utf-8")
+    output = tmp_path / "observations.json"
+    monkeypatch.setattr(sys, "argv", [
+        "prepare_corpus.py", "--manifest", str(manifest),
+        "--input-dir", str(raw), "--output", str(output)
+    ])
+    assert main() == 0
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert report["sentence_count"] == 2
+    section = report["section_statistics"]["computer_science::abstract"]
+    assert section["mean_words"] == 4
