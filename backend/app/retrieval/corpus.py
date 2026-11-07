@@ -15,7 +15,9 @@ def eligible(pair: dict[str, Any]) -> bool:
             and src.get("license") in ALLOWED_LICENSES
             and (src.get("kind") != "public_dataset" or src.get("text_mining_permitted") is True))
 class RevisionCorpus:
-    def __init__(self, pairs: list[dict[str, Any]]): self.pairs = [pair for pair in pairs if eligible(pair)]
+    def __init__(self, pairs: list[dict[str, Any]]):
+        self.pairs = [pair for pair in pairs if eligible(pair)]
+        self._indexes: dict[tuple[str | None, str | None, str | None], tuple[list[dict[str, Any]], BM25Index]] = {}
     @classmethod
     def load(cls, path: Path = DEFAULT_DATASET):
         if not path.exists(): return cls([])
@@ -38,10 +40,16 @@ class RevisionCorpus:
     def document(p):
         return " ".join([p["original_text"],p["edited_text"],p["rationale"],p["discipline"],p["section"],*p["edit_types"]])
     def search(self, query: str, *, discipline: str|None=None, section: str|None=None, edit_type: str|None=None, limit: int=8):
-        rows=[p for p in self.pairs if (discipline is None or p["discipline"].casefold()==discipline.casefold())
-              and (section is None or p["section"]==section) and (edit_type is None or edit_type in p["edit_types"])]
-        if not rows: return []
-        index=BM25Index([self.document(p) for p in rows]); result=[]
+        key=(discipline.casefold() if discipline else None, section, edit_type)
+        cached=self._indexes.get(key)
+        if cached is None:
+            rows=[p for p in self.pairs if (discipline is None or p["discipline"].casefold()==discipline.casefold())
+                  and (section is None or p["section"]==section) and (edit_type is None or edit_type in p["edit_types"])]
+            if not rows: return []
+            cached=(rows, BM25Index([self.document(p) for p in rows]))
+            self._indexes[key]=cached
+        rows,index=cached
+        result=[]
         for hit in index.search(query, limit=limit):
             p=rows[hit.index]; src=p["source"]; meta=p.get("aries_metadata",{})
             result.append({"pair_id":p["pair_id"],"discipline":p["discipline"],"section":p["section"],
