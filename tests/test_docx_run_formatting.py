@@ -218,3 +218,98 @@ def test_editing_text_preserves_embedded_docx_image_and_relationship():
     )
     image_part = exported.part.related_parts[image_relationship_id]
     assert image_part.blob == png
+
+
+
+def test_editing_safe_paragraph_preserves_docx_comments_package_part():
+    import zipfile
+    from datetime import datetime, timezone
+    from xml.etree import ElementTree as ET
+    from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from backend.app.core.jobs import Job, ParagraphState
+    from backend.app.document_processing.parser import DocumentParser
+    from backend.app.export.exporter import _docx_bytes
+
+    document = Document()
+    document.add_paragraph("The primary result was recorded .")
+    commented = document.add_paragraph("This sentence has an editorial comment.")
+    start = OxmlElement("w:commentRangeStart")
+    start.set(qn("w:id"), "0")
+    end = OxmlElement("w:commentRangeEnd")
+    end.set(qn("w:id"), "0")
+    reference_run = OxmlElement("w:r")
+    reference = OxmlElement("w:commentReference")
+    reference.set(qn("w:id"), "0")
+    reference_run.append(reference)
+    commented._p.insert(1, start)
+    commented._p.append(end)
+    commented._p.append(reference_run)
+
+    initial = io.BytesIO()
+    document.save(initial)
+    source = initial.getvalue()
+    source_buffer = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source), "r") as original, zipfile.ZipFile(source_buffer, "w") as patched:
+        for item in original.infolist():
+            data = original.read(item.filename)
+            if item.filename == "word/_rels/document.xml.rels":
+                root = ET.fromstring(data)
+                ET.SubElement(root, "{http://schemas.openxmlformats.org/package/2006/relationships}Relationship", {
+                    "Id": "rIdCommentsTest",
+                    "Type": "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+                    "Target": "comments.xml",
+                })
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            elif item.filename == "[Content_Types].xml":
+                root = ET.fromstring(data)
+                ET.SubElement(root, "{http://schemas.openxmlformats.org/package/2006/content-types}Override", {
+                    "PartName": "/word/comments.xml",
+                    "ContentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml",
+                })
+                data = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            patched.writestr(item, data)
+        patched.writestr(
+            "word/comments.xml",
+            b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            b'<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            b'<w:comment w:id="0" w:author="Reviewer"><w:p><w:r><w:t>Check this claim.</w:t></w:r></w:p></w:comment>'
+            b'</w:comments>',
+        )
+
+    raw = source_buffer.getvalue()
+    parsed = DocumentParser.parse_bytes(raw, "comments.docx")
+    states = [
+        ParagraphState(
+            id=item.id, index=index, original_text=item.text,
+            paragraph_type=item.paragraph_type, category="general", section=None,
+            eligible=True, masked_text=item.text,
+        )
+        for index, item in enumerate(parsed.paragraphs)
+    ]
+    edited = next(state for state in states if state.original_text == "The primary result was recorded .")
+    edited.current_text = "The primary result was recorded."
+    edited.review_status = "accepted"
+    job = Job(
+        job_id="docx-comments-preservation-test", filename="comments.docx", file_type="docx",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        created_at=datetime.now(timezone.utc).isoformat(), style="academic", options={},
+        document=parsed, paragraphs=states, original_bytes=raw,
+    )
+
+    exported_bytes = _docx_bytes(job)
+    with zipfile.ZipFile(io.BytesIO(exported_bytes), "r") as exported:
+        assert "word/comments.xml" in exported.namelist()
+        comments = exported.read("word/comments.xml")
+        assert b"Check this claim." in comments
+        relationships = ET.fromstring(exported.read("word/_rels/document.xml.rels"))
+        assert any(
+            relation.attrib.get("Type", "").endswith("/comments")
+            and relation.attrib.get("Target") == "comments.xml"
+            for relation in relationships
+        )
+        main_document = exported.read("word/document.xml")
+        assert b"commentRangeStart" in main_document
+        assert b"commentRangeEnd" in main_document
+        assert b"commentReference" in main_document
