@@ -55,7 +55,7 @@ def test_parse_bytes_routes_through_cleanup_and_preserves_ocr_options(monkeypatc
     monkeypatch.setattr(
         parser_module, "fitz", SimpleNamespace(
             open=lambda **kwargs: document
-        )
+        ), raising=False
     )
     received = {}
 
@@ -86,7 +86,7 @@ def test_parse_file_routes_through_cleanup(monkeypatch, tmp_path):
     monkeypatch.setattr(
         parser_module, "fitz", SimpleNamespace(
             open=lambda path: document
-        )
+        ), raising=False
     )
     monkeypatch.setattr(
         PDFParser, "_extract_paragraphs",
