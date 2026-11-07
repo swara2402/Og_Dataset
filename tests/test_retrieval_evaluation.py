@@ -56,3 +56,24 @@ def test_evaluation_requires_human_labels():
 def test_evaluation_rejects_invalid_k():
     with pytest.raises(ValueError, match="positive"):
         evaluate_queries(RevisionCorpus([]), [{"query": "neural", "relevant_pair_ids": ["p1"]}], [0])
+
+
+def test_evaluation_rejects_duplicate_k_values():
+    with pytest.raises(ValueError, match="unique"):
+        evaluate_queries(RevisionCorpus([]), [{"query": "neural", "relevant_pair_ids": ["p1"]}], [1, 1])
+
+
+@pytest.mark.parametrize("record", [None, [], "not an object"])
+def test_evaluation_rejects_non_object_judgement_records(record):
+    with pytest.raises(ValueError, match="JSON object"):
+        evaluate_queries(RevisionCorpus([]), [record], [1])
+
+
+def test_evaluation_rejects_unsupported_filter_values():
+    corpus = RevisionCorpus([approved("p1", "neural network")])
+    with pytest.raises(ValueError, match="unsupported section"):
+        evaluate_queries(
+            corpus,
+            [{"query": "neural", "relevant_pair_ids": ["p1"], "filters": {"section": "unknown"}}],
+            [1],
+        )
