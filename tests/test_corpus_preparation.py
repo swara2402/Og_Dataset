@@ -166,3 +166,23 @@ def test_manifest_requires_https_provenance_urls(tmp_path, field, value):
     manifest.write_text(json.dumps(record) + chr(10), encoding="utf-8")
     with pytest.raises(ValueError, match=f"{field} must be a valid HTTPS URL"):
         load_manifest(manifest)
+
+
+
+def test_corpus_builder_rejects_symlinked_input_directory(tmp_path, monkeypatch):
+    real_raw = tmp_path / "real_raw"
+    real_raw.mkdir()
+    (real_raw / "paper.txt").write_text(
+        "A licensed source extract should remain local.", encoding="utf-8"
+    )
+    linked_raw = tmp_path / "linked_raw"
+    linked_raw.symlink_to(real_raw, target_is_directory=True)
+    manifest = tmp_path / "sources.jsonl"
+    manifest.write_text(json.dumps(_valid_manifest_record()) + chr(10), encoding="utf-8")
+    output = tmp_path / "observations.json"
+    monkeypatch.setattr(sys, "argv", [
+        "prepare_corpus.py", "--manifest", str(manifest),
+        "--input-dir", str(linked_raw), "--output", str(output)
+    ])
+    with pytest.raises(ValueError, match="input directory must not be a symbolic link"):
+        main()
