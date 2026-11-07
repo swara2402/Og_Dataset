@@ -144,7 +144,7 @@ def test_manifest_validate_only_does_not_require_local_source_files(tmp_path, mo
 @pytest.mark.parametrize("record", [None, [], "not-an-object", 17, True])
 def test_manifest_rejects_non_object_json_records(tmp_path, record):
     manifest = tmp_path / "sources.jsonl"
-    manifest.write_text(json.dumps(record) + "\\n", encoding="utf-8")
+    manifest.write_text(json.dumps(record) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match="record must be a JSON object"):
         load_manifest(manifest)
 
@@ -163,6 +163,6 @@ def test_manifest_requires_https_provenance_urls(tmp_path, field, value):
     manifest = tmp_path / "sources.jsonl"
     record = _valid_manifest_record()
     record[field] = value
-    manifest.write_text(json.dumps(record) + "\\n", encoding="utf-8")
+    manifest.write_text(json.dumps(record) + "\n", encoding="utf-8")
     with pytest.raises(ValueError, match=f"{field} must be a valid HTTPS URL"):
         load_manifest(manifest)
