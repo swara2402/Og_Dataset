@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, Copy, Loader2, Search, ShieldCheck } from 'lucide-react';
 import { useAPI, AcademicRevisionExample } from '../contexts/APIContext';
 
@@ -14,9 +14,14 @@ export default function AcademicExamplesPanel({ initialQuery }: AcademicExamples
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const activeRequest = useRef(0);
 
   useEffect(() => {
+    // Invalidate any in-flight search when the workspace switches paragraphs.
+    activeRequest.current += 1;
     setQuery(initialQuery);
+    setLoading(false);
+    setError(null);
   }, [initialQuery]);
 
   const searchExamples = async () => {
@@ -25,17 +30,29 @@ export default function AcademicExamplesPanel({ initialQuery }: AcademicExamples
       setError('Enter at least two characters to search academic examples.');
       return;
     }
+    const requestId = ++activeRequest.current;
     setLoading(true);
     setError(null);
+    setExamples([]);
     setSearched(true);
-    const response = await getAcademicExamples(cleanQuery, { limit: 5 });
-    if (!response) {
-      setExamples([]);
-      setError('Academic examples could not be loaded. Check the backend connection and try again.');
-    } else {
-      setExamples(response.examples);
+    try {
+      const response = await getAcademicExamples(cleanQuery, { limit: 5 });
+      // Ignore stale responses if a newer search or paragraph change occurred.
+      if (requestId !== activeRequest.current) return;
+      if (!response) {
+        setExamples([]);
+        setError('Academic examples could not be loaded. Check the backend connection and try again.');
+      } else {
+        setExamples(response.examples);
+      }
+    } catch {
+      if (requestId === activeRequest.current) {
+        setExamples([]);
+        setError('Academic examples could not be loaded. Check the backend connection and try again.');
+      }
+    } finally {
+      if (requestId === activeRequest.current) setLoading(false);
     }
-    setLoading(false);
   };
 
   const copyExample = async (example: AcademicRevisionExample) => {
