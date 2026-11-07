@@ -14,6 +14,7 @@ from backend.app.core.config import settings
 from backend.app.core.jobs import job_store
 from backend.app.api.auth import current_owner_id, is_rate_limited, resolve_owner
 from backend.app.humanisation.engine import HumanisationEngine
+from backend.app.retrieval.api import retrieval_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,6 +101,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(retrieval_router, prefix="/api/v1")
 
 
 @app.get("/api/health")

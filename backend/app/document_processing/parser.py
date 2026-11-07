@@ -295,7 +295,7 @@ class PDFParser:
     def parse(file_path: Path, filename: str) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(str(file_path))
-            return PDFParser._extract_paragraphs(doc, filename)
+            return PDFParser._parse_fitz_document(doc, filename)
         if PYPDF_AVAILABLE:
             reader = PypdfReader(str(file_path))
             return PDFParser._extract_with_pypdf(reader, filename)
@@ -308,16 +308,26 @@ class PDFParser:
     def parse_bytes(data: bytes, filename: str, *, enable_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(stream=data, filetype="pdf")
-            return PDFParser._extract_paragraphs(doc, filename, enable_ocr=enable_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
+            return PDFParser._parse_fitz_document(
+                doc, filename, enable_ocr=enable_ocr,
+                ocr_language=ocr_language, ocr_dpi=ocr_dpi,
+            )
         if PYPDF_AVAILABLE:
             reader = PypdfReader(io.BytesIO(data))
             parsed = PDFParser._extract_with_pypdf(reader, filename)
             if enable_ocr:
+                pages_needing_ocr = sorted(set(
+                    parsed.metadata.get("pages_with_no_text", [])
+                    + parsed.metadata.get("pages_with_little_text", [])
+                ))
                 parsed.metadata.update({
                     "ocr_enabled": True, "ocr_pages": [],
-                    "ocr_unavailable_pages": parsed.metadata.get("pages_with_no_text", []),
+                    "ocr_unavailable_pages": pages_needing_ocr,
                     "ocr_language": ocr_language, "ocr_dpi": ocr_dpi,
-                    "ocr_warning": "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available.",
+                    "ocr_warning": (
+                        "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available."
+                        if pages_needing_ocr else None
+                    ),
                 })
             return parsed
         raise ImportError(
@@ -325,6 +335,14 @@ class PDFParser:
             "'pip install pymupdf' or 'pip install pypdf'."
         )
     
+    @staticmethod
+    def _parse_fitz_document(doc: Any, filename: str, **options: Any) -> ParsedDocument:
+        """Extract a PDF and always release the PyMuPDF document handle."""
+        try:
+            return PDFParser._extract_paragraphs(doc, filename, **options)
+        finally:
+            doc.close()
+
     @staticmethod
     def _quality_metadata(page_texts: List[str], extractor: str) -> Dict[str, Any]:
         lengths = [len(text.strip()) for text in page_texts]
@@ -410,8 +428,9 @@ class PDFParser:
         ocr_dependency_error: str | None = None
         
         for page_num, page in enumerate(doc):
-            page_text = page.get_text("text") or ""
-            if enable_ocr and len(page_text.strip()) < 40:
+            original_page_text = page.get_text("text") or ""
+            page_text = original_page_text
+            if enable_ocr and len(original_page_text.strip()) < 40:
                 try:
                     ocr_text = PDFParser._ocr_page(page, language=ocr_language, dpi=ocr_dpi)
                     if ocr_text.strip():
@@ -422,7 +441,7 @@ class PDFParser:
                     ocr_unavailable_pages.append(page_num + 1)
             page_texts.append(page_text)
             blocks = page.get_text("blocks")
-            if enable_ocr and len((page.get_text("text") or "").strip()) < 40 and page_num + 1 in ocr_pages:
+            if enable_ocr and len(original_page_text.strip()) < 40 and page_num + 1 in ocr_pages:
                 blocks = []
                 for block_text in re.split(r"\n\s*\n", page_text):
                     block_text = block_text.strip()
@@ -589,7 +608,7 @@ class LatexParser:
     @staticmethod
     def _classify(block: str) -> str:
         value = block.strip()
-        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|gather\*?|multline\*?|math|displaymath|flalign\*?)\}", value):
+        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|alignat\*?|gather\*?|gathered|multline\*?|math|displaymath|flalign\*?|eqnarray\*?|split|cases|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix)\}", value):
             return "equation"
         if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
@@ -616,8 +635,16 @@ class LatexParser:
     def _parse_content(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
+        math_environments = {
+            "equation", "equation*", "align", "align*", "alignat", "alignat*",
+            "gather", "gather*", "gathered", "multline", "multline*",
+            "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
+            "displaymath", "split", "cases", "array", "matrix", "pmatrix",
+            "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
+        }
         protected_environments = {
             "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            *math_environments,
             "figure", "figure*", "table", "table*", "tabular", "tabular*",
             "longtable", "tikzpicture", "algorithm", "algorithm*",
             "algorithmic", "picture", "minipage",
@@ -641,10 +668,22 @@ class LatexParser:
                         reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
                         active_environments = active_environments[:reverse_index]
             paragraph_type = LatexParser._classify(block)
+            protected_context = [
+                *active_environments,
+                *(environment for _, environment in environment_pattern.findall(block)),
+            ]
             if was_inside_protected or starts_protected or any(
                 env in protected_environments for env in active_environments
             ):
-                paragraph_type = "code"
+                # Math remains a distinct non-editable equation type. Other
+                # protected containers (figures, code, tables, diagrams) take
+                # precedence when math is nested inside them.
+                if any(env in protected_environments - math_environments for env in protected_context):
+                    paragraph_type = "code"
+                elif any(env in math_environments for env in protected_context):
+                    paragraph_type = "equation"
+                else:
+                    paragraph_type = "code"
             paragraphs.append(DocumentParagraph(
                 id=f"tex_block_{index}",
                 text=block,

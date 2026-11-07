@@ -44,6 +44,19 @@ def _export_text(state: ParagraphState) -> str:
     return state.original_text
 
 
+def _docx_paragraph_is_safe_to_rewrite(paragraph: DocxParagraph) -> bool:
+    """Allow only plain text runs; preserve tabs, breaks, fields and embedded objects."""
+    for child in paragraph._p.iterchildren():
+        if child.tag == qn("w:pPr"):
+            continue
+        if child.tag != qn("w:r"):
+            return False
+        for run_child in child.iterchildren():
+            if run_child.tag not in {qn("w:rPr"), qn("w:t")}:
+                return False
+    return True
+
+
 def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> bool:
     """Apply an accepted text edit while retaining safe paragraph/run formatting.
 
@@ -54,9 +67,7 @@ def _set_paragraph_text(paragraph: DocxParagraph, text: str) -> bool:
     if original == text:
         return True
 
-    children = list(paragraph._p.iterchildren())
-    allowed_tags = {qn("w:pPr"), qn("w:r")}
-    if any(child.tag not in allowed_tags for child in children):
+    if not _docx_paragraph_is_safe_to_rewrite(paragraph):
         return False
 
     runs = list(paragraph.runs)
@@ -135,8 +146,7 @@ def _docx_unapplied_edits(job: Job) -> list[str]:
         if state is None or state.review_status != "accepted" or state.current_text == state.original_text:
             continue
         found.add(state.id)
-        children = list(item.original_element._p.iterchildren())
-        if any(child.tag not in {qn("w:pPr"), qn("w:r")} for child in children):
+        if not _docx_paragraph_is_safe_to_rewrite(item.original_element):
             skipped.append(state.id)
             continue
         if "".join(run.text for run in item.original_element.runs) != item.original_element.text:
@@ -203,6 +213,23 @@ def _markdown_text(job: Job) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _latex_structure_signature(value: str) -> tuple[str, ...]:
+    """Return TeX commands and unescaped structural/special tokens in order."""
+    pattern = r"\\(?:[A-Za-z@]+|.)|(?<!\\)[\x7b\x7d]|(?<!\\)[%$&#_^~]"
+    return tuple(re.findall(pattern, value))
+
+
+def _latex_reference_signature(value: str) -> tuple[str, ...]:
+    """Keep citation keys, labels, references and resource paths byte-for-byte."""
+    pattern = (
+        r"\\(?:cite[a-zA-Z]*|ref|eqref|pageref|label|autoref|cref|Cref|"
+        r"nameref|hyperref|url|bibliography|addbibresource|begin|end|"
+        r"includegraphics|input|include|documentclass|usepackage|"
+        r"bibliographystyle|lstinputlisting)\*?"
+        r"(?:\[[^\]]*\])*\s*\{[^{}]*\}"
+    )
+    return tuple(re.findall(pattern, value))
+
 def _latex_text(job: Job) -> str:
     """Splice accepted prose edits into the original TeX source by exact offsets."""
     if job.file_type != "tex" or not job.original_bytes:
@@ -223,9 +250,20 @@ def _latex_text(job: Job) -> str:
             raise ValueError("LaTeX source no longer matches parsed paragraph offsets.")
         if state.paragraph_type != "body":
             raise ValueError("Only prose blocks can be exported as LaTeX edits.")
+        if (
+            _latex_structure_signature(state.original_text) != _latex_structure_signature(state.current_text)
+            or _latex_reference_signature(state.original_text) != _latex_reference_signature(state.current_text)
+        ):
+            raise ValueError(
+                "LaTeX edit changes commands, references or special syntax; source was not modified."
+            )
         edits.append((start, end, state.current_text))
 
-    for start, end, replacement in sorted(edits, reverse=True):
+    ordered_edits = sorted(edits)
+    if any(current[0] < previous[1] for previous, current in zip(ordered_edits, ordered_edits[1:])):
+        raise ValueError("LaTeX edit offsets overlap; source was not modified.")
+
+    for start, end, replacement in reversed(ordered_edits):
         source = source[:start] + replacement + source[end:]
     return source
 
