@@ -212,11 +212,11 @@ def _latex_structure_signature(value: str) -> tuple[str, ...]:
 def _latex_reference_signature(value: str) -> tuple[str, ...]:
     """Keep citation keys, labels, references and resource paths byte-for-byte."""
     pattern = (
-        r"\\\\(?:cite[a-zA-Z]*|ref|eqref|pageref|label|autoref|cref|Cref|"
+        r"\\(?:cite[a-zA-Z]*|ref|eqref|pageref|label|autoref|cref|Cref|"
         r"nameref|hyperref|url|bibliography|addbibresource|begin|end|"
         r"includegraphics|input|include|documentclass|usepackage|"
-        r"bibliographystyle|lstinputlisting)\\*?"
-        r"(?:\\[[^\\]]*\\])*\\s*\\{[^{}]*\\}"
+        r"bibliographystyle|lstinputlisting)\*?"
+        r"(?:\[[^\]]*\])*\s*\{[^{}]*\}"
     )
     return tuple(re.findall(pattern, value))
 
