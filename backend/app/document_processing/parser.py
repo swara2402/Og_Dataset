@@ -533,7 +533,7 @@ class TextParser:
 
 
 class MarkdownParser:
-    """Markdown parser that keeps fenced code blocks intact across blank lines."""
+    """Conservative Markdown parser protecting fenced and indented code blocks."""
 
     @staticmethod
     def parse(file_path: Path, filename: str) -> ParsedDocument:
@@ -555,6 +555,9 @@ class MarkdownParser:
         fence_length = 0
         fence_language = ""
         fence_start = 0
+        indented_code = False
+        indented_start = 0
+        pending_blank_lines: List[str] = []
 
         def flush(kind: str | None = None, language: str = "", start_line: int = 0, closed: bool = True) -> None:
             nonlocal current
@@ -563,6 +566,22 @@ class MarkdownParser:
                 current = []
 
         for line_number, line in enumerate(content.splitlines(), start=1):
+            if fence_char is None and indented_code:
+                if not line.strip():
+                    # A blank line belongs to an indented code block only if
+                    # another indented code line follows it.
+                    pending_blank_lines.append(line)
+                    continue
+                is_indented = line.startswith("    ") or line.startswith("\t")
+                if is_indented:
+                    current.extend(pending_blank_lines)
+                    pending_blank_lines = []
+                    current.append(line)
+                    continue
+                flush("indented_code", "", indented_start, True)
+                indented_code = False
+                pending_blank_lines = []
+
             # CommonMark fenced blocks may be indented by at most three spaces.
             # Four-space-indented fence-like text is code content, not a delimiter.
             indent = len(line) - len(line.lstrip(" "))
@@ -582,7 +601,12 @@ class MarkdownParser:
                     fence_start = line_number
                     current = [line]
                     continue
-                if not line.strip():
+                if line.startswith("    ") or line.startswith("\t"):
+                    flush()
+                    indented_code = True
+                    indented_start = line_number
+                    current = [line]
+                elif not line.strip():
                     flush()
                 else:
                     current.append(line)
@@ -599,6 +623,9 @@ class MarkdownParser:
 
         if fence_char is not None:
             flush("code", fence_language, fence_start, False)
+        elif indented_code:
+            # Trailing blank lines are not part of the code block.
+            flush("indented_code", "", indented_start, True)
         else:
             flush()
 
@@ -606,14 +633,14 @@ class MarkdownParser:
             if forced_type == "code":
                 fence_lines = block.splitlines()
                 code_lines = fence_lines[1:-1] if closed and len(fence_lines) >= 2 else fence_lines[1:]
-                text = "\n".join(code_lines)
                 paragraphs.append(DocumentParagraph(
                     id=f"md_{index}",
-                    text=text,
+                    text="\n".join(code_lines),
                     paragraph_type="code",
                     location=f"markdown.{index}",
                     metadata={
                         "code_block": True,
+                        "fenced": True,
                         "fence_language": language,
                         "fence_char": block.lstrip()[:1] if block.lstrip()[:1] in {"`", "~"} else "`",
                         "source_line": start_line,
@@ -622,20 +649,12 @@ class MarkdownParser:
                 ))
                 continue
 
-            # Protect simple top-level indented Markdown code blocks. Every
-            # nonblank line must retain its four-space/tab indentation; mixed
-            # prose/code blocks are left to the ordinary paragraph path.
-            block_lines = block.splitlines()
-            nonblank_lines = [line for line in block_lines if line.strip()]
-            if nonblank_lines and all(
-                line.startswith("    ") or line.startswith("\t")
-                for line in nonblank_lines
-            ):
+            if forced_type == "indented_code":
                 code_lines = [
                     line[4:] if line.startswith("    ")
                     else line[1:] if line.startswith("\t")
                     else line
-                    for line in block_lines
+                    for line in block.splitlines()
                 ]
                 paragraphs.append(DocumentParagraph(
                     id=f"md_{index}",
@@ -678,7 +697,6 @@ class MarkdownParser:
             paragraphs=paragraphs,
             metadata={"block_count": len(paragraphs)},
         )
-
 
 class LatexParser:
     """Conservative LaTeX block parser with exact source offsets.
