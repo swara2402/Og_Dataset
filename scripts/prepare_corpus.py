@@ -31,7 +31,7 @@ TRANSITIONS = {
 
 def sentences(text: str) -> list[str]:
     # Conservative sentence boundary heuristic; abbreviations may require manual cleanup.
-    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", text) if len(s.split()) >= 3]
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[^\W_])", text) if len(s.split()) >= 3]
 
 
 def classify_sentence_opening(words: list[str]) -> str:
@@ -167,7 +167,7 @@ def main() -> int:
             if section not in source["sections"]:
                 continue
             for sentence in sentences(" ".join(lines)):
-                words = re.findall(r"[A-Za-z][A-Za-z'-]*", sentence.lower())
+                words = re.findall(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", sentence.lower(), re.UNICODE)
                 if not words:
                     continue
                 row = stats[f"{source['discipline']}::{section}"]
