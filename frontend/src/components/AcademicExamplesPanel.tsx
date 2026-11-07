@@ -20,8 +20,11 @@ export default function AcademicExamplesPanel({ initialQuery }: AcademicExamples
     // Invalidate any in-flight search when the workspace switches paragraphs.
     activeRequest.current += 1;
     setQuery(initialQuery);
+    setExamples([]);
+    setSearched(false);
     setLoading(false);
     setError(null);
+    setCopiedId(null);
   }, [initialQuery]);
 
   const searchExamples = async () => {
