@@ -112,6 +112,9 @@ def main() -> int:
     if args.validate_only:
         print(json.dumps({"valid": True, "source_count": len(manifest)}, indent=2))
         return 0
+    if args.input_dir.is_symlink():
+        raise ValueError("Corpus input directory must not be a symbolic link")
+    input_root = args.input_dir.resolve()
     stats = defaultdict(lambda: {"sentences": 0, "word_counts": [], "hedge_markers": 0,
                                  "be_auxiliary_markers": 0, "transition_markers": Counter(), "opening_patterns": Counter()})
     disciplines, total = Counter(), 0
@@ -119,6 +122,9 @@ def main() -> int:
         source_path = args.input_dir / source["local_text"]
         if source_path.is_symlink():
             raise ValueError(f"Corpus source must not be a symbolic link: {source['source_id']}")
+        resolved_source = source_path.resolve()
+        if not resolved_source.is_relative_to(input_root):
+            raise ValueError(f"Corpus source escapes the input directory: {source['source_id']}")
         if not source_path.is_file():
             if source["license"] == "SYNTHETIC":
                 continue
