@@ -211,3 +211,24 @@ def test_pararev_acquisition_rejects_checksum_mismatch(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="checksum mismatch"):
         acquisition.main()
     assert not output.exists()
+
+
+def test_pararev_acquisition_fails_if_upstream_rows_do_not_map(tmp_path, monkeypatch):
+    import json
+    import sys
+
+    from scripts import acquire_og_awc_pararev as acquisition
+
+    raw = tmp_path / "raw.jsonl"
+    output = tmp_path / "revision_pairs.jsonl"
+    raw.write_text(json.dumps({"unexpected_field": "value"}) + "\n", encoding="utf-8")
+    monkeypatch.setattr(acquisition, "EXPECTED_SHA256", acquisition.sha256_file(raw))
+    monkeypatch.setattr(
+        sys, "argv",
+        ["acquire_og_awc_pararev.py", "--accept-license",
+         "--raw", str(raw), "--output", str(output)],
+    )
+
+    with pytest.raises(ValueError, match="No ParaRev rows could be mapped"):
+        acquisition.main()
+    assert not output.exists()
