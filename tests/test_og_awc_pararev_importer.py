@@ -44,7 +44,7 @@ def test_pararev_acquisition_output_matches_canonical_schema(tmp_path, monkeypat
         "annot_1": {"label": "upstream annotation"},
         "annot_2": None,
     }
-    raw.write_text(json.dumps(row) + "\\n", encoding="utf-8")
+    raw.write_text(json.dumps(row) + "\n", encoding="utf-8")
     monkeypatch.setattr(
         sys, "argv",
         ["acquire_og_awc_pararev.py", "--accept-license",
