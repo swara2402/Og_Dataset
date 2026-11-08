@@ -30,7 +30,7 @@ def test_pararev_acquisition_output_matches_canonical_schema(tmp_path, monkeypat
     import json
     import sys
 
-    from scripts.acquire_og_awc_pararev import main
+    from scripts import acquire_og_awc_pararev as acquisition
     from scripts.validate_revision_pairs import load_pairs
 
     raw = tmp_path / "raw.jsonl"
@@ -45,13 +45,14 @@ def test_pararev_acquisition_output_matches_canonical_schema(tmp_path, monkeypat
         "annot_2": None,
     }
     raw.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch.setattr(acquisition, "EXPECTED_SHA256", acquisition.sha256_file(raw))
     monkeypatch.setattr(
         sys, "argv",
         ["acquire_og_awc_pararev.py", "--accept-license",
          "--raw", str(raw), "--output", str(output)],
     )
 
-    assert main() == 0
+    assert acquisition.main() == 0
     pairs = load_pairs(output)
     assert len(pairs) == 1
     pair = pairs[0]
@@ -95,7 +96,7 @@ def test_validator_rejects_approval_without_text_mining_permission(tmp_path, mon
     import json
     import sys
 
-    from scripts.acquire_og_awc_pararev import main
+    from scripts import acquire_og_awc_pararev as acquisition
     from scripts.validate_revision_pairs import load_pairs
 
     raw = tmp_path / "raw.jsonl"
@@ -108,12 +109,13 @@ def test_validator_rejects_approval_without_text_mining_permission(tmp_path, mon
         "parag_2": "Revised paragraph.",
     }
     raw.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch.setattr(acquisition, "EXPECTED_SHA256", acquisition.sha256_file(raw))
     monkeypatch.setattr(
         sys, "argv",
         ["acquire_og_awc_pararev.py", "--accept-license",
          "--raw", str(raw), "--output", str(output)],
     )
-    assert main() == 0
+    assert acquisition.main() == 0
 
     pair = json.loads(output.read_text(encoding="utf-8").splitlines()[0])
     pair["review_status"] = "human_approved"
