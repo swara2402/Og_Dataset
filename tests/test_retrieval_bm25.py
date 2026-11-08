@@ -156,3 +156,26 @@ def test_public_source_urls_reject_credentials_and_whitespace():
     ):
         pair = {**base, "source": {**base["source"], "url": url}}
         assert RevisionCorpus([pair]).search("neural network") == []
+
+
+def test_human_revision_with_unsafe_optional_source_url_is_not_retrieved():
+    pair = {
+        "pair_id": "unsafe-human-link",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "neural network classification method",
+        "edited_text": "neural network classification approach",
+        "edit_types": ["clarity"],
+        "rationale": "clarified",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "human_revision",
+            "reference": "reviewed pair",
+            "license": "CC0-1.0",
+            "attribution": "reviewer",
+            "url": "javascript:alert(1)",
+        },
+    }
+    assert RevisionCorpus([pair]).search("neural network") == []
