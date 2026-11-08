@@ -401,3 +401,86 @@ def test_editing_safe_paragraph_preserves_docx_footnotes_package_part():
             for relation in relationships
         )
         assert b"footnoteReference" in exported.read("word/document.xml")
+
+
+
+def test_editing_safe_paragraph_preserves_tracked_changes_markup():
+    from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from backend.app.export.exporter import _docx_bytes
+
+    document = Document()
+    document.add_paragraph("The primary result was recorded .")
+    tracked = document.add_paragraph()
+    insertion = OxmlElement("w:ins")
+    insertion.set(qn("w:id"), "21")
+    insertion.set(qn("w:author"), "Reviewer")
+    inserted_run = OxmlElement("w:r")
+    inserted_text = OxmlElement("w:t")
+    inserted_text.text = " newly inserted wording"
+    inserted_run.append(inserted_text)
+    insertion.append(inserted_run)
+    deletion = OxmlElement("w:del")
+    deletion.set(qn("w:id"), "22")
+    deletion.set(qn("w:author"), "Reviewer")
+    deleted_run = OxmlElement("w:r")
+    deleted_text = OxmlElement("w:delText")
+    deleted_text.text = "removed wording"
+    deleted_run.append(deleted_text)
+    deletion.append(deleted_run)
+    tracked._p.append(insertion)
+    tracked._p.append(deletion)
+
+    job, states = _make_docx_job(document, filename="tracked-changes.docx")
+    edited = next(state for state in states if state.original_text == "The primary result was recorded .")
+    edited.current_text = "The primary result was recorded."
+    edited.review_status = "accepted"
+
+    with zipfile.ZipFile(io.BytesIO(_docx_bytes(job)), "r") as exported:
+        xml = exported.read("word/document.xml")
+    assert b"<w:ins" in xml
+    assert b"<w:del" in xml
+    assert b"newly inserted wording" in xml
+    assert b"removed wording" in xml
+    assert b'w:id="21"' in xml
+    assert b'w:id="22"' in xml
+
+
+def test_editing_safe_paragraph_preserves_docx_content_control():
+    from docx import Document
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from backend.app.export.exporter import _docx_bytes
+
+    document = Document()
+    document.add_paragraph("The primary result was recorded .")
+    controlled = document.add_paragraph()
+    sdt = OxmlElement("w:sdt")
+    properties = OxmlElement("w:sdtPr")
+    tag = OxmlElement("w:tag")
+    tag.set(qn("w:val"), "reviewer-note")
+    properties.append(tag)
+    content = OxmlElement("w:sdtContent")
+    run = OxmlElement("w:r")
+    text_node = OxmlElement("w:t")
+    text_node.text = "Content controlled by the source document"
+    run.append(text_node)
+    content.append(run)
+    sdt.append(properties)
+    sdt.append(content)
+    controlled._p.append(sdt)
+
+    job, states = _make_docx_job(document, filename="content-control.docx")
+    edited = next(state for state in states if state.original_text == "The primary result was recorded .")
+    edited.current_text = "The primary result was recorded."
+    edited.review_status = "accepted"
+
+    with zipfile.ZipFile(io.BytesIO(_docx_bytes(job)), "r") as exported:
+        xml = exported.read("word/document.xml")
+    assert b"<w:sdt>" in xml
+    assert b"<w:sdtPr>" in xml
+    assert b"<w:tag" in xml
+    assert b'reviewer-note' in xml
+    assert b"<w:sdtContent>" in xml
+    assert b"Content controlled by the source document" in xml
