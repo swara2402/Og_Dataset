@@ -242,13 +242,19 @@ export default function DocumentWorkspace() {
   ) => {
     if (!file?.jobId) return;
     const response = await reviewHybridProposal(file.jobId, proposal, action);
-    if (feedbackConsent) {
-      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: proposal.proposal_id, job_id: file.jobId, paragraph_id: proposal.paragraph_id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'hybrid_proposal_review', style: results?.style, protected_span_integrity: 'passed' });
-      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
-    }
     if (!response) {
       setError(`Could not ${action} this hybrid suggestion. It may be stale or have failed protected-content validation.`);
       return;
+    }
+    if (feedbackConsent) {
+      const validation = response.paragraph.validation;
+      const integrity = validation.valid === true
+        ? 'passed'
+        : validation.valid === false
+          ? 'failed'
+          : 'not_checked';
+      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: proposal.proposal_id, job_id: file.jobId, paragraph_id: proposal.paragraph_id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'hybrid_proposal_review', style: results?.style, protected_span_integrity: integrity });
+      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
     }
     setHybridDecisions((current) => ({
       ...current,
@@ -284,13 +290,19 @@ export default function DocumentWorkspace() {
   ) => {
     if (!file?.jobId) return;
     const response = await reviewParagraph(file.jobId, paragraph.id, action);
-    if (feedbackConsent) {
-      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: `${file.jobId}:${paragraph.id}`, job_id: file.jobId, paragraph_id: paragraph.id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'paragraph_review', style: results?.style, protected_span_integrity: paragraph.validation.valid === false ? 'failed' : 'passed' });
-      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
-    }
     if (!response) {
       setError(`Could not ${action} this change. Please retry.`);
       return;
+    }
+    if (feedbackConsent) {
+      const validation = response.paragraph.validation;
+      const integrity = validation.valid === true
+        ? 'passed'
+        : validation.valid === false
+          ? 'failed'
+          : 'not_checked';
+      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: `${file.jobId}:${paragraph.id}`, job_id: file.jobId, paragraph_id: paragraph.id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'paragraph_review', style: results?.style, protected_span_integrity: integrity });
+      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
     }
     const refreshed = await getProcessingResults(file.jobId);
     if (refreshed) setResults(refreshed);
