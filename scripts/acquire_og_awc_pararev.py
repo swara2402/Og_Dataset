@@ -100,7 +100,7 @@ def main() -> int:
     temporary = args.output.with_suffix(args.output.suffix + ".tmp")
     written = excluded = 0
     try:
-        with temporary.open("w", encoding="utf-8", newline="\\n") as out:
+        with temporary.open("w", encoding="utf-8", newline="") as out:
             for line_no, row in read_rows(args.raw):
                 original, revised = row.get("parag-1"), row.get("parag-2")
                 source_version, target_version = row.get("id_source"), row.get("id_target")
@@ -148,7 +148,7 @@ def main() -> int:
                         "overlap_group": "pararev_full_includes_641_annotated_subset"
                     }
                 }
-                out.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\\n")
+                out.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
                 written += 1
         temporary.replace(args.output)
     finally:
@@ -170,7 +170,7 @@ def main() -> int:
         "review_status": "all_records_pending_review",
         "warning": "The 641 annotated subset is contained in this full dataset. Do not count it twice or combine with CASIMIR as independent data. Dataset-level terms do not resolve every underlying paper right."
     }
-    args.output.with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=2) + "\\n", encoding="utf-8")
+    args.output.with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(manifest, indent=2))
     return 0
 
