@@ -11,6 +11,12 @@ dataset files at startup and refreshes them for each document job. Dataset
 examples still marked `draft` are reference material only; they are not treated
 as approved rewrite pairs.
 
+## Product direction
+
+The target product is a document-first writing improvement system: understand the document, propose context-aware and reviewable edits, preserve meaning and formatting, and improve future suggestions from explicit, consented human feedback. The product problem statement and scope are in [`docs/PROJECT_CHARTER.md`](docs/PROJECT_CHARTER.md); the adaptive feedback and learning protocol is in [`docs/ADAPTIVE_LEARNING_PROTOCOL.md`](docs/ADAPTIVE_LEARNING_PROTOCOL.md).
+
+The learning objective is writing quality and meaning preservation. AI-detector scores are not training rewards or evidence of human authorship.
+
 ## Features
 
 - Upload DOCX, PDF, TXT, Markdown, and LaTeX (`.tex`) documents.
@@ -208,6 +214,9 @@ The synthetic preservation benchmark checks conservative edits against negation,
 | POST | `/api/v1/processing/{job_id}/cancel` | Cancel processing |
 | GET | `/api/v1/analysis/{job_id}/report` | Writing-quality and validation report |
 | POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |
+| POST | `/api/v1/feedback` | Record explicit consent-based structured suggestion feedback (no document text) |
+| DELETE | `/api/v1/feedback/{event_id}` | Delete a feedback event owned by the authenticated account |
+| DELETE | `/api/v1/feedback` | Withdraw feedback retention by deleting all events for the authenticated account |
 
 ## Repository audit
 
