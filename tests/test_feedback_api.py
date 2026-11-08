@@ -71,3 +71,12 @@ def test_feedback_can_be_deleted_by_owning_account(tmp_path, monkeypatch):
     with __import__("sqlite3").connect(tmp_path / "feedback.sqlite3") as connection:
         count = connection.execute("SELECT COUNT(*) FROM feedback_events").fetchone()[0]
     assert count == 0
+
+
+def test_account_can_withdraw_and_delete_all_feedback(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    client.post("/api/v1/feedback", json=_payload())
+    client.post("/api/v1/feedback", json=_payload(suggestion_id="suggestion-2"))
+    deleted = client.delete("/api/v1/feedback")
+    assert deleted.status_code == 200
+    assert deleted.json()["events_deleted"] == 2
