@@ -101,3 +101,20 @@ async def record_feedback(event: FeedbackEvent):
         "stored_text": False,
         "message": "Structured feedback recorded; document passages were not stored.",
     }
+
+
+@router.delete("/feedback/{event_id}")
+async def delete_feedback(event_id: str):
+    """Delete one feedback event owned by the authenticated account."""
+    try:
+        parsed_id = str(uuid.UUID(event_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Feedback event not found.") from exc
+    with _connect() as connection:
+        cursor = connection.execute(
+            "DELETE FROM feedback_events WHERE event_id=? AND owner_id=?",
+            (parsed_id, current_owner_id.get()),
+        )
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Feedback event not found.")
+    return {"event_id": parsed_id, "deleted": True}
