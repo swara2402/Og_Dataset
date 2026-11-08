@@ -89,3 +89,41 @@ def test_pararev_acquisition_requires_explicit_license_acknowledgement(
     assert exc.value.code == 2
     assert not raw.exists()
     assert not output.exists()
+
+
+def test_validator_rejects_approval_without_text_mining_permission(tmp_path):
+    import json
+
+    from scripts.acquire_og_awc_pararev import main
+    from scripts.validate_revision_pairs import load_pairs
+
+    raw = tmp_path / "raw.jsonl"
+    output = tmp_path / "revision_pairs.jsonl"
+    row = {
+        "id_source": "article-v1",
+        "id_target": "article-v2",
+        "id_paragraph": "paragraph-8",
+        "parag-1": "Original paragraph.",
+        "parag-2": "Revised paragraph.",
+    }
+    raw.write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch = pytest.MonkeyPatch()
+    try:
+        import sys
+        monkeypatch.setattr(
+            sys, "argv",
+            ["acquire_og_awc_pararev.py", "--accept-license",
+             "--raw", str(raw), "--output", str(output)],
+        )
+        assert main() == 0
+    finally:
+        monkeypatch.undo()
+
+    pair = json.loads(output.read_text(encoding="utf-8").splitlines()[0])
+    pair["review_status"] = "human_approved"
+    pair["meaning_preserved"] = True
+    pair["reviewer_id"] = "reviewer-1"
+    output.write_text(json.dumps(pair) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="text-mining permission"):
+        load_pairs(output)
