@@ -310,6 +310,7 @@ interface APIContextType {
   ) => Promise<ReviewResponse | null>;
   getAnalysisReport: (jobId: string) => Promise<AnalysisReport | null>;
   exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => Promise<Blob | null>;
+  recordFeedback: (event: { consent: true; consent_version: string; suggestion_id: string; job_id?: string; paragraph_id?: string; action: 'accepted' | 'rejected' | 'edited_then_accepted'; task?: string; style?: string; protected_span_integrity?: 'passed' | 'failed' | 'not_checked' }) => Promise<boolean>;
   listJobs: () => Promise<JobSummary[]>;
   errorMessage: (error: unknown) => string;
   isConnected: boolean;
@@ -565,6 +566,16 @@ export function APIProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const recordFeedback = useCallback(async (event: { consent: true; consent_version: string; suggestion_id: string; job_id?: string; paragraph_id?: string; action: 'accepted' | 'rejected' | 'edited_then_accepted'; task?: string; style?: string; protected_span_integrity?: 'passed' | 'failed' | 'not_checked' }): Promise<boolean> => {
+    try {
+      await api.post('/feedback', event);
+      return true;
+    } catch (error) {
+      console.error('Could not record consented feedback:', extractError(error));
+      return false;
+    }
+  }, []);
+
   const exportDocument = useCallback(
     async (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex'): Promise<Blob | null> => {
       try {
@@ -607,6 +618,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     reviewHybridProposal,
     getAnalysisReport,
     exportDocument,
+    recordFeedback,
     listJobs,
     errorMessage: extractError,
     isConnected,
