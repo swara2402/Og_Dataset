@@ -9,6 +9,7 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
+from contextlib import closing
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -84,7 +85,7 @@ async def record_feedback(event: FeedbackEvent):
     created_at = datetime.now(timezone.utc).isoformat()
     owner_id = current_owner_id.get()
     payload = event.model_dump(exclude={"consent"})
-    with _connect() as connection:
+    with closing(_connect()) as connection, connection:
         connection.execute(
             "INSERT INTO feedback_events(event_id, created_at, owner_id, consent_version, payload) VALUES(?,?,?,?,?)",
             (event_id, created_at, owner_id, event.consent_version,
