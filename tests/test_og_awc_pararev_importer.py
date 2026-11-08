@@ -125,7 +125,16 @@ def test_validator_rejects_approval_without_text_mining_permission(tmp_path, mon
         load_pairs(output)
 
 
-def test_validator_enforces_uri_format_for_public_source_provenance(tmp_path):
+@pytest.mark.parametrize(
+    "source_url",
+    [
+        "not a valid URL",
+        "http://example.org/paper",
+        "https://user@example.org/paper",
+        "https://example.org:99999/paper",
+    ],
+)
+def test_validator_enforces_secure_https_public_source_provenance(tmp_path, source_url):
     import json
 
     from scripts.validate_revision_pairs import load_pairs
@@ -146,7 +155,7 @@ def test_validator_enforces_uri_format_for_public_source_provenance(tmp_path):
             "reference": "source record",
             "license": "CC-BY-NC-SA-4.0",
             "attribution": "Source attribution",
-            "url": "not a valid URL",
+            "url": source_url,
             "license_evidence": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
             "text_mining_permitted": False,
         },
