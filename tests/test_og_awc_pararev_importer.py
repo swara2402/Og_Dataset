@@ -232,3 +232,34 @@ def test_pararev_acquisition_fails_if_upstream_rows_do_not_map(tmp_path, monkeyp
     with pytest.raises(ValueError, match="No ParaRev rows could be mapped"):
         acquisition.main()
     assert not output.exists()
+
+
+def test_validator_rejects_unsafe_optional_urls_for_human_revisions(tmp_path):
+    import json
+
+    from scripts.validate_revision_pairs import load_pairs
+
+    pair = {
+        "pair_id": "unsafe-human-link",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "Original paragraph.",
+        "edited_text": "Revised paragraph.",
+        "edit_types": ["clarity"],
+        "rationale": "clarified",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "human_revision",
+            "reference": "reviewed pair",
+            "license": "CC0-1.0",
+            "attribution": "reviewer",
+            "url": "javascript:alert(1)",
+        },
+    }
+    dataset = tmp_path / "revision_pairs.jsonl"
+    dataset.write_text(json.dumps(pair) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="valid HTTPS URL"):
+        load_pairs(dataset)
