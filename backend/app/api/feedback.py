@@ -118,3 +118,14 @@ async def delete_feedback(event_id: str):
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="Feedback event not found.")
     return {"event_id": parsed_id, "deleted": True}
+
+
+@router.delete("/feedback")
+async def delete_all_feedback():
+    """Withdraw feedback retention by deleting all events for this account."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            "DELETE FROM feedback_events WHERE owner_id=?",
+            (current_owner_id.get(),),
+        )
+    return {"deleted": True, "events_deleted": cursor.rowcount}
