@@ -62,6 +62,15 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"Line {line_number}: synthetic records must use SYNTHETIC provenance")
         elif source["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"Line {line_number}: licence is not on the reviewed allowlist")
+        if (
+            source["kind"] == "public_dataset"
+            and item["review_status"] == "human_approved"
+            and source.get("text_mining_permitted") is not True
+        ):
+            raise ValueError(
+                f"Line {line_number}: public-dataset pairs cannot be approved without "
+                "explicit text-mining permission"
+            )
         if item["review_status"] == "human_approved" and item["meaning_preserved"] is not True:
             raise ValueError(f"Line {line_number}: approved pairs must explicitly preserve meaning")
         if item["original_text"].strip() == item["edited_text"].strip() and item["review_status"] == "human_approved":
