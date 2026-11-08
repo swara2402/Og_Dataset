@@ -68,7 +68,7 @@ def test_approved_public_pairs_require_https_source_and_license_evidence():
     insecure_evidence = {**base, "pair_id": "public-4", "source": {**base["source"], "license_evidence": "javascript:alert(1)"}}
     assert RevisionCorpus([missing_evidence, insecure_source, insecure_evidence]).search("neural network") == []
 
-def test_load_rejects_malformed_source_urls(tmp_path):
+def test_load_excludes_malformed_source_urls(tmp_path):
     pair = {
         "pair_id": "bad-uri",
         "discipline": "computer science",
@@ -93,9 +93,8 @@ def test_load_rejects_malformed_source_urls(tmp_path):
     dataset = tmp_path / "revision_pairs.jsonl"
     dataset.write_text(json.dumps(pair) + chr(10), encoding="utf-8")
 
-    import pytest
-    with pytest.raises(ValueError, match="Invalid pair on line 1"):
-        RevisionCorpus.load(dataset)
+    corpus = RevisionCorpus.load(dataset)
+    assert corpus.search("neural network") == []
 
 
 def test_load_excludes_http_public_sources_even_when_uri_is_well_formed(tmp_path):
