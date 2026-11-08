@@ -39,9 +39,13 @@ def eligible(pair: dict[str, Any]) -> bool:
         and src.get("license") in ALLOWED_LICENSES
     ):
         return False
+    # Any provenance URL rendered by the UI must be safe, regardless of
+    # source kind. Public datasets additionally require both URLs and explicit
+    # text-mining permission before they can ever be retrieved.
+    for field in ("url", "license_evidence"):
+        if src.get(field) is not None and not _is_https_url(src.get(field)):
+            return False
     if src.get("kind") == "public_dataset":
-        # Dataset records must retain verifiable source and licence evidence;
-        # JSON Schema's optional format checking alone is not sufficient here.
         return (
             src.get("text_mining_permitted") is True
             and _is_https_url(src.get("url"))
