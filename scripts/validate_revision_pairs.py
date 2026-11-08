@@ -18,7 +18,7 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/revision_pair.schema.json"
 DEFAULT_INPUT = ROOT / "knowledge_base/datasets/revision_pairs.jsonl"
-ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
+ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0", "CC-BY-NC-SA-4.0"}
 
 
 def canonical_text(value: str) -> str:
