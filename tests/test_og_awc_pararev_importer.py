@@ -39,8 +39,8 @@ def test_pararev_acquisition_output_matches_canonical_schema(tmp_path, monkeypat
         "id_source": "article-v1",
         "id_target": "article-v2",
         "id_paragraph": "paragraph-7",
-        "parag-1": "  Original scientific paragraph.  ",
-        "parag-2": "Revised scientific paragraph.",
+        "parag_1": "  Original scientific paragraph.  ",
+        "parag_2": "Revised scientific paragraph.",
         "annot_1": {"label": "upstream annotation"},
         "annot_2": None,
     }
@@ -104,8 +104,8 @@ def test_validator_rejects_approval_without_text_mining_permission(tmp_path, mon
         "id_source": "article-v1",
         "id_target": "article-v2",
         "id_paragraph": "paragraph-8",
-        "parag-1": "Original paragraph.",
-        "parag-2": "Revised paragraph.",
+        "parag_1": "Original paragraph.",
+        "parag_2": "Revised paragraph.",
     }
     raw.write_text(json.dumps(row) + "\n", encoding="utf-8")
     monkeypatch.setattr(
@@ -176,3 +176,16 @@ def test_validator_enforces_secure_https_public_source_provenance(tmp_path, sour
 
     with pytest.raises(ValueError):
         load_pairs(dataset)
+
+
+def test_pararev_source_field_aliases_are_supported_but_conflicts_fail_closed():
+    from scripts.acquire_og_awc_pararev import _source_field
+
+    assert _source_field({"parag_1": "canonical"}, "parag_1", "parag-1") == "canonical"
+    assert _source_field({"parag-1": "legacy"}, "parag_1", "parag-1") == "legacy"
+    with pytest.raises(ValueError, match="Conflicting upstream fields"):
+        _source_field(
+            {"parag_1": "canonical", "parag-1": "different"},
+            "parag_1",
+            "parag-1",
+        )
