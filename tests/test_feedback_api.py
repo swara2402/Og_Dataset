@@ -59,3 +59,15 @@ def test_rating_action_requires_rating(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch)
     response = client.post("/api/v1/feedback", json=_payload(action="rated"))
     assert response.status_code == 422
+
+
+def test_feedback_can_be_deleted_by_owning_account(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    created = client.post("/api/v1/feedback", json=_payload())
+    event_id = created.json()["event_id"]
+    deleted = client.delete(f"/api/v1/feedback/{event_id}")
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+    with __import__("sqlite3").connect(tmp_path / "feedback.sqlite3") as connection:
+        count = connection.execute("SELECT COUNT(*) FROM feedback_events").fetchone()[0]
+    assert count == 0
