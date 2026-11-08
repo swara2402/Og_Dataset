@@ -26,6 +26,7 @@ DB_PATH = Path(os.getenv(
 
 
 class FeedbackEvent(BaseModel):
+    model_config = {"extra": "forbid"}
     consent: bool = Field(description="Must be true for this event to be retained.")
     consent_version: str = Field(min_length=1, max_length=40)
     suggestion_id: str = Field(min_length=1, max_length=200)
