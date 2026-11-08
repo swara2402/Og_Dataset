@@ -213,7 +213,10 @@ The synthetic preservation benchmark checks conservative edits against negation,
 | POST | `/api/v1/processing/{job_id}/restore-version` | Restore a recorded paragraph version |
 | POST | `/api/v1/processing/{job_id}/cancel` | Cancel processing |
 | GET | `/api/v1/analysis/{job_id}/report` | Writing-quality and validation report |
-| POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |\n| POST | `/api/v1/feedback` | Record explicit consent-based structured suggestion feedback (no document text) |\n| DELETE | `/api/v1/feedback/{event_id}` | Delete a feedback event owned by the authenticated account |\n| DELETE | `/api/v1/feedback` | Withdraw feedback retention by deleting all events for the authenticated account |
+| POST | `/api/v1/export/{job_id}` | Export DOCX, PDF, Markdown, or text |
+| POST | `/api/v1/feedback` | Record explicit consent-based structured suggestion feedback (no document text) |
+| DELETE | `/api/v1/feedback/{event_id}` | Delete a feedback event owned by the authenticated account |
+| DELETE | `/api/v1/feedback` | Withdraw feedback retention by deleting all events for the authenticated account |
 
 ## Repository audit
 
