@@ -315,7 +315,9 @@ def test_editing_safe_paragraph_preserves_docx_comments_package_part():
         assert b"commentReference" in main_document
 
 
-\n\ndef test_editing_safe_paragraph_preserves_docx_footnotes_package_part():
+
+
+def test_editing_safe_paragraph_preserves_docx_footnotes_package_part():
     import zipfile
     from datetime import datetime, timezone
     from xml.etree import ElementTree as ET
