@@ -131,7 +131,7 @@ def main() -> int:
                         "attribution": ATTRIBUTION,
                         "url": SOURCE_URL,
                         "license_evidence": LICENSE_URL,
-                        "text_mining_permitted": True
+                        "text_mining_permitted": False
                     },
                     "pararev_metadata": {
                         "paper_id": version_to_paper.get(source_version.strip(), "unassigned"),
@@ -168,7 +168,7 @@ def main() -> int:
         "normalized_output": str(args.output),
         "publication_status": "local_only_pending_underlying_article_rights_review",
         "review_status": "all_records_pending_review",
-        "warning": "The 641 annotated subset is contained in this full dataset. Do not count it twice or combine with CASIMIR as independent data. Dataset-level terms do not resolve every underlying paper right."
+        "warning": "The 641 annotated subset is contained in this full dataset. Do not count it twice or combine with CASIMIR as independent data. Dataset-level terms do not resolve every underlying paper right; text mining remains disabled until rights are checked."
     }
     args.output.with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(manifest, indent=2))
