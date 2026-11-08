@@ -39,6 +39,12 @@ def read_rows(path: Path):
             yield line_no, row
 
 
+def _source_field(row: dict[str, Any], canonical: str, legacy: str) -> Any:
+    if canonical in row and legacy in row and row[canonical] != row[legacy]:
+        raise ValueError(f"Conflicting upstream fields: {canonical} and {legacy}")
+    return row[canonical] if canonical in row else row.get(legacy)
+
+
 def paper_components(rows: list[dict[str, Any]]) -> dict[str, str]:
     parent: dict[str, str] = {}
 
@@ -102,7 +108,11 @@ def main() -> int:
     try:
         with temporary.open("w", encoding="utf-8", newline="") as out:
             for line_no, row in read_rows(args.raw):
-                original, revised = row.get("parag-1"), row.get("parag-2")
+                # The Hugging Face viewer exposes the canonical fields as
+                # parag_1/parag_2. Accept the historical hyphenated spelling
+                # as a compatibility alias, but reject conflicting duplicates.
+                original = _source_field(row, "parag_1", "parag-1")
+                revised = _source_field(row, "parag_2", "parag-2")
                 source_version, target_version = row.get("id_source"), row.get("id_target")
                 paragraph_id = row.get("id_paragraph")
                 required = (original, revised, source_version, target_version, paragraph_id)
