@@ -405,6 +405,7 @@ def test_editing_safe_paragraph_preserves_docx_footnotes_package_part():
 
 
 def test_editing_safe_paragraph_preserves_tracked_changes_markup():
+    import zipfile
     from docx import Document
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
@@ -448,6 +449,7 @@ def test_editing_safe_paragraph_preserves_tracked_changes_markup():
 
 
 def test_editing_safe_paragraph_preserves_docx_content_control():
+    import zipfile
     from docx import Document
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
