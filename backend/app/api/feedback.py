@@ -106,7 +106,7 @@ async def delete_feedback(event_id: str):
         parsed_id = str(uuid.UUID(event_id))
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="Feedback event not found.") from exc
-    with _connect() as connection:
+    with closing(_connect()) as connection, connection:
         cursor = connection.execute(
             "DELETE FROM feedback_events WHERE event_id=? AND owner_id=?",
             (parsed_id, current_owner_id.get()),
@@ -119,7 +119,7 @@ async def delete_feedback(event_id: str):
 @router.delete("/feedback")
 async def delete_all_feedback():
     """Withdraw feedback retention by deleting all events for this account."""
-    with _connect() as connection:
+    with closing(_connect()) as connection, connection:
         cursor = connection.execute(
             "DELETE FROM feedback_events WHERE owner_id=?",
             (current_owner_id.get(),),
