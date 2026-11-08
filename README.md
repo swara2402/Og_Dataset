@@ -11,6 +11,12 @@ dataset files at startup and refreshes them for each document job. Dataset
 examples still marked `draft` are reference material only; they are not treated
 as approved rewrite pairs.
 
+## Product direction
+
+The target product is a document-first writing improvement system: understand the document, propose context-aware and reviewable edits, preserve meaning and formatting, and improve future suggestions from explicit, consented human feedback. The product problem statement and scope are in [`docs/PROJECT_CHARTER.md`](docs/PROJECT_CHARTER.md); the adaptive feedback and learning protocol is in [`docs/ADAPTIVE_LEARNING_PROTOCOL.md`](docs/ADAPTIVE_LEARNING_PROTOCOL.md).
+
+The learning objective is writing quality and meaning preservation. AI-detector scores are not training rewards or evidence of human authorship.
+
 ## Features
 
 - Upload DOCX, PDF, TXT, Markdown, and LaTeX (`.tex`) documents.
