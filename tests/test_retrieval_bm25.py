@@ -125,3 +125,34 @@ def test_load_excludes_http_public_sources_even_when_uri_is_well_formed(tmp_path
     corpus = RevisionCorpus.load(dataset)
     assert corpus.search("neural network") == []
 
+
+
+def test_public_source_urls_reject_credentials_and_whitespace():
+    base = {
+        "pair_id": "strict-url",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "neural network classification method",
+        "edited_text": "neural network classification approach",
+        "edit_types": ["clarity"],
+        "rationale": "clarified",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "public_dataset",
+            "reference": "paper-1",
+            "license": "CC-BY-4.0",
+            "attribution": "Author et al.",
+            "url": "https://example.org/paper",
+            "license_evidence": "https://example.org/license",
+            "text_mining_permitted": True,
+        },
+    }
+    for url in (
+        "https://user@example.org/paper",
+        "https://example.org/path with spaces",
+        "https://example.org:99999/paper",
+    ):
+        pair = {**base, "source": {**base["source"], "url": url}}
+        assert RevisionCorpus([pair]).search("neural network") == []
