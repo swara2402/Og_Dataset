@@ -1,3 +1,5 @@
+import pytest
+
 from scripts.acquire_og_awc_pararev import paper_components
 
 
