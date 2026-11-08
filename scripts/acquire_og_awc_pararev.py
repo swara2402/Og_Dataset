@@ -16,6 +16,8 @@ from typing import Any
 SOURCE_URL = "https://huggingface.co/datasets/taln-ls2n/pararev"
 REVISION = "e61dc8a43ae067513208e75f79b49f9928dcbec3"
 FILENAME = "pararev_full_without_annotation.jsonl"
+EXPECTED_SHA256 = "bd5a078c2b544c9a53c0c2b3f22fe8d2c089d156682def9abd094b0f6b13f1ac"
+MAX_RAW_BYTES = 256 * 1024 * 1024
 DOWNLOAD_URL = f"{SOURCE_URL}/resolve/{REVISION}/{FILENAME}?download=true"
 LICENSE = "CC-BY-NC-SA-4.0"
 LICENSE_URL = "https://creativecommons.org/licenses/by-nc-sa/4.0/"
@@ -23,6 +25,14 @@ ATTRIBUTION = (
     "Jourdan et al., ParaRev: Building a dataset for Scientific Paragraph "
     "Revision annotated with revision instruction (WRAICOGS 2025)."
 )
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def read_rows(path: Path):
@@ -89,11 +99,28 @@ def main() -> int:
         partial = args.raw.with_suffix(args.raw.suffix + ".part")
         try:
             with urllib.request.urlopen(request, timeout=240) as response, partial.open("wb") as target:
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > MAX_RAW_BYTES:
+                    raise ValueError("ParaRev download exceeds the configured 256 MiB safety limit")
+                downloaded = 0
                 while chunk := response.read(1024 * 1024):
+                    downloaded += len(chunk)
+                    if downloaded > MAX_RAW_BYTES:
+                        raise ValueError("ParaRev download exceeds the configured 256 MiB safety limit")
                     target.write(chunk)
             partial.replace(args.raw)
         finally:
             partial.unlink(missing_ok=True)
+
+    digest = sha256_file(args.raw)
+    if digest != EXPECTED_SHA256:
+        raise ValueError(
+            "ParaRev source checksum mismatch; refusing to process an unverified file "
+            f"(expected {EXPECTED_SHA256}, received {digest})"
+        )
+
+    if args.raw.resolve() == args.output.resolve():
+        raise ValueError("Raw ParaRev input and normalized output must be different files")
 
     # Collect only article-version links for deterministic paper-level grouping.
     rows_for_links: list[dict[str, Any]] = []
@@ -164,7 +191,6 @@ def main() -> int:
     finally:
         temporary.unlink(missing_ok=True)
 
-    digest = hashlib.sha256(args.raw.read_bytes()).hexdigest()
     manifest = {
         "source": "ParaRev full",
         "source_revision": REVISION,
