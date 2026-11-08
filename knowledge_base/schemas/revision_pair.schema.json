@@ -129,7 +129,7 @@
           "format": "uri"
         },
         "text_mining_permitted": {
-          "const": true
+          "type": "boolean"
         }
       }
     },
@@ -240,8 +240,7 @@
           "source": {
             "required": [
               "url",
-              "license_evidence",
-              "text_mining_permitted"
+              "license_evidence"
             ]
           }
         }
