@@ -10,14 +10,23 @@ DEFAULT_DATASET = ROOT / "knowledge_base/datasets/revision_pairs.jsonl"
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/revision_pair.schema.json"
 ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
 def _is_https_url(value: Any) -> bool:
-    if not isinstance(value, str):
+    """Require an absolute HTTPS URL without whitespace, credentials or bad ports."""
+    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
         return False
     try:
         parsed = urlparse(value)
         hostname = parsed.hostname
+        port = parsed.port
     except ValueError:
         return False
-    return parsed.scheme == "https" and bool(hostname and hostname.strip())
+    return (
+        parsed.scheme == "https"
+        and bool(hostname)
+        and hostname.strip(".") != ""
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
 
 
 def eligible(pair: dict[str, Any]) -> bool:
