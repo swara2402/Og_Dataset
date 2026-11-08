@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sqlite3
 import uuid
 from datetime import datetime, timezone
@@ -45,10 +44,6 @@ class FeedbackEvent(BaseModel):
     rule_version: Optional[str] = Field(default=None, max_length=80)
     dataset_version: Optional[str] = Field(default=None, max_length=80)
     protected_span_integrity: Optional[Literal["passed", "failed", "not_checked"]] = None
-
-    @classmethod
-    def validate_rating(cls, values):
-        return values
 
 
 def _connect():
