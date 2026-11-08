@@ -1,12 +1,25 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.api.auth import current_owner_id
+from starlette.requests import Request
+
 from backend.app.api import feedback
 
 
 def _client(tmp_path, monkeypatch):
     monkeypatch.setattr(feedback, "DB_PATH", tmp_path / "feedback.sqlite3")
     app = FastAPI()
+
+    @app.middleware("http")
+    async def test_owner_scope(request: Request, call_next):
+        owner = request.headers.get("x-test-owner", "local")
+        token = current_owner_id.set(owner)
+        try:
+            return await call_next(request)
+        finally:
+            current_owner_id.reset(token)
+
     app.include_router(feedback.router, prefix="/api/v1")
     return TestClient(app)
 
@@ -97,3 +110,39 @@ def test_feedback_can_be_deleted_in_bulk(tmp_path, monkeypatch):
     deleted = client.delete("/api/v1/feedback")
     assert deleted.status_code == 200
     assert deleted.json()["events_deleted"] == 2
+
+
+def test_feedback_deletion_is_scoped_to_account_owner(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    created = client.post("/api/v1/feedback", json=_payload(), headers={"x-test-owner": "alice"})
+    event_id = created.json()["event_id"]
+
+    other_owner_delete = client.delete(
+        f"/api/v1/feedback/{event_id}", headers={"x-test-owner": "bob"}
+    )
+    assert other_owner_delete.status_code == 404
+
+    owner_delete = client.delete(
+        f"/api/v1/feedback/{event_id}", headers={"x-test-owner": "alice"}
+    )
+    assert owner_delete.status_code == 200
+
+
+def test_bulk_feedback_deletion_is_scoped_to_account_owner(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    client.post("/api/v1/feedback", json=_payload(), headers={"x-test-owner": "alice"})
+    client.post(
+        "/api/v1/feedback",
+        json=_payload(suggestion_id="bob-suggestion"),
+        headers={"x-test-owner": "bob"},
+    )
+
+    deleted = client.delete("/api/v1/feedback", headers={"x-test-owner": "alice"})
+    assert deleted.status_code == 200
+    assert deleted.json()["events_deleted"] == 1
+
+    with __import__("sqlite3").connect(tmp_path / "feedback.sqlite3") as connection:
+        rows = connection.execute(
+            "SELECT owner_id FROM feedback_events"
+        ).fetchall()
+    assert rows == [("bob",)]
