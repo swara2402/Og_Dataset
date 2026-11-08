@@ -91,7 +91,7 @@ def test_load_rejects_malformed_source_urls(tmp_path):
         },
     }
     dataset = tmp_path / "revision_pairs.jsonl"
-    dataset.write_text(json.dumps(pair) + "\\n", encoding="utf-8")
+    dataset.write_text(json.dumps(pair) + chr(10), encoding="utf-8")
 
     import pytest
     with pytest.raises(ValueError, match="Invalid pair on line 1"):
@@ -121,7 +121,7 @@ def test_load_excludes_http_public_sources_even_when_uri_is_well_formed(tmp_path
         },
     }
     dataset = tmp_path / "revision_pairs.jsonl"
-    dataset.write_text(json.dumps(pair) + "\\n", encoding="utf-8")
+    dataset.write_text(json.dumps(pair) + chr(10), encoding="utf-8")
 
     corpus = RevisionCorpus.load(dataset)
     assert corpus.search("neural network") == []
