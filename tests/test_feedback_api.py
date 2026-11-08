@@ -80,3 +80,20 @@ def test_account_can_withdraw_and_delete_all_feedback(tmp_path, monkeypatch):
     deleted = client.delete("/api/v1/feedback")
     assert deleted.status_code == 200
     assert deleted.json()["events_deleted"] == 2
+
+
+def test_feedback_can_be_deleted_by_event_id(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    created = client.post("/api/v1/feedback", json=_payload()).json()
+    deleted = client.delete(f"/api/v1/feedback/{created['event_id']}")
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted"] is True
+
+
+def test_feedback_can_be_deleted_in_bulk(tmp_path, monkeypatch):
+    client = _client(tmp_path, monkeypatch)
+    client.post("/api/v1/feedback", json=_payload())
+    client.post("/api/v1/feedback", json=_payload(suggestion_id="suggestion-2"))
+    deleted = client.delete("/api/v1/feedback")
+    assert deleted.status_code == 200
+    assert deleted.json()["events_deleted"] == 2
