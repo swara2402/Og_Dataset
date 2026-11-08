@@ -82,6 +82,11 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"Line {line_number}: synthetic records must use SYNTHETIC provenance")
         elif source["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"Line {line_number}: licence is not on the reviewed allowlist")
+        for field in ("url", "license_evidence"):
+            if field in source and not _is_valid_https_url(source[field]):
+                raise ValueError(
+                    f"Line {line_number}: provenance {field} must be a valid HTTPS URL"
+                )
         if source["kind"] == "public_dataset":
             for field in ("url", "license_evidence"):
                 if not _is_valid_https_url(source.get(field)):
