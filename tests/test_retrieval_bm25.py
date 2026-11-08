@@ -67,3 +67,62 @@ def test_approved_public_pairs_require_https_source_and_license_evidence():
     insecure_source = {**base, "pair_id": "public-3", "source": {**base["source"], "url": "http://example.org/paper"}}
     insecure_evidence = {**base, "pair_id": "public-4", "source": {**base["source"], "license_evidence": "javascript:alert(1)"}}
     assert RevisionCorpus([missing_evidence, insecure_source, insecure_evidence]).search("neural network") == []
+
+def test_load_rejects_malformed_source_urls(tmp_path):
+    pair = {
+        "pair_id": "bad-uri",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "The model use a neural network.",
+        "edited_text": "The model uses a neural network.",
+        "edit_types": ["grammar"],
+        "rationale": "Subject-verb agreement correction.",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "public_dataset",
+            "reference": "paper-1",
+            "license": "CC-BY-4.0",
+            "attribution": "Author et al.",
+            "url": "https://",
+            "license_evidence": "https://example.org/license",
+            "text_mining_permitted": True,
+        },
+    }
+    dataset = tmp_path / "revision_pairs.jsonl"
+    dataset.write_text(json.dumps(pair) + "\\n", encoding="utf-8")
+
+    import pytest
+    with pytest.raises(ValueError, match="Invalid pair on line 1"):
+        RevisionCorpus.load(dataset)
+
+
+def test_load_excludes_http_public_sources_even_when_uri_is_well_formed(tmp_path):
+    pair = {
+        "pair_id": "insecure-source",
+        "discipline": "computer science",
+        "section": "methods",
+        "original_text": "The model use a neural network.",
+        "edited_text": "The model uses a neural network.",
+        "edit_types": ["grammar"],
+        "rationale": "Subject-verb agreement correction.",
+        "meaning_preserved": True,
+        "review_status": "human_approved",
+        "reviewer_id": "reviewer-1",
+        "source": {
+            "kind": "public_dataset",
+            "reference": "paper-1",
+            "license": "CC-BY-4.0",
+            "attribution": "Author et al.",
+            "url": "http://example.org/paper",
+            "license_evidence": "https://example.org/license",
+            "text_mining_permitted": True,
+        },
+    }
+    dataset = tmp_path / "revision_pairs.jsonl"
+    dataset.write_text(json.dumps(pair) + "\\n", encoding="utf-8")
+
+    corpus = RevisionCorpus.load(dataset)
+    assert corpus.search("neural network") == []
+
