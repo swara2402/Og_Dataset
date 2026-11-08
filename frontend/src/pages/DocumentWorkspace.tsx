@@ -51,6 +51,7 @@ export default function DocumentWorkspace() {
     reviewHybridProposal,
     analyzeParagraph,
     exportDocument,
+    recordFeedback,
     isConnected,
   } = useAPI();
 
@@ -63,6 +64,7 @@ export default function DocumentWorkspace() {
   const [exportOpen, setExportOpen] = useState(false);
   const [hybridResult, setHybridResult] = useState<HybridAnalysisResponse | null>(null);
   const [hybridLoading, setHybridLoading] = useState(false);
+  const [feedbackConsent, setFeedbackConsent] = useState(false);
   const [useSpacyContext, setUseSpacyContext] = useState(false);
   const [copiedProposalId, setCopiedProposalId] = useState<string | null>(null);
   const [hybridDecisions, setHybridDecisions] = useState<Record<string, 'accepted' | 'rejected'>>({});
@@ -240,6 +242,10 @@ export default function DocumentWorkspace() {
   ) => {
     if (!file?.jobId) return;
     const response = await reviewHybridProposal(file.jobId, proposal, action);
+    if (feedbackConsent) {
+      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: proposal.proposal_id, job_id: file.jobId, paragraph_id: proposal.paragraph_id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'hybrid_proposal_review', style: results?.style, protected_span_integrity: 'passed' });
+      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
+    }
     if (!response) {
       setError(`Could not ${action} this hybrid suggestion. It may be stale or have failed protected-content validation.`);
       return;
@@ -278,6 +284,10 @@ export default function DocumentWorkspace() {
   ) => {
     if (!file?.jobId) return;
     const response = await reviewParagraph(file.jobId, paragraph.id, action);
+    if (feedbackConsent) {
+      const recorded = await recordFeedback({ consent: true, consent_version: '2026-11-v1', suggestion_id: `${file.jobId}:${paragraph.id}`, job_id: file.jobId, paragraph_id: paragraph.id, action: action === 'accept' ? 'accepted' : 'rejected', task: 'paragraph_review', style: results?.style, protected_span_integrity: paragraph.validation.valid === false ? 'failed' : 'passed' });
+      if (!recorded) setError('Your review was saved, but its optional learning feedback could not be recorded.');
+    }
     if (!response) {
       setError(`Could not ${action} this change. Please retry.`);
       return;
@@ -450,6 +460,8 @@ export default function DocumentWorkspace() {
             {activeTab === 'original' && results.results.map((item) => (
               <p key={item.id} className="leading-relaxed text-neutral-700 dark:text-neutral-300">{item.original}</p>
             ))}
+
+            <label className="mb-3 flex items-start gap-2 rounded-lg border border-neutral-200 p-3 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"><input type="checkbox" checked={feedbackConsent} onChange={(event) => setFeedbackConsent(event.target.checked)} className="mt-0.5" /><span><strong>Optional learning feedback:</strong> allow this app to save only structured accept/reject decisions and limited review metadata to improve future suggestions. Document text is not included. You can leave this unchecked and still use the editor.</span></label>
 
             {activeTab === 'revised' && results.results.map((item) => (
               <div key={item.id} className={`rounded-lg border p-4 ${item.processed ? 'border-neutral-200 dark:border-neutral-700' : 'border-transparent opacity-70'}`}>
