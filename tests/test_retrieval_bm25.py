@@ -85,7 +85,7 @@ def test_load_rejects_malformed_source_urls(tmp_path):
             "reference": "paper-1",
             "license": "CC-BY-4.0",
             "attribution": "Author et al.",
-            "url": "https://",
+            "url": "not a valid URL",
             "license_evidence": "https://example.org/license",
             "text_mining_permitted": True,
         },
