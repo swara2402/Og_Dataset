@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/revision_pair.schema.json"
@@ -32,7 +32,7 @@ def pair_fingerprint(item: dict[str, Any]) -> str:
 
 def load_pairs(path: Path) -> list[dict[str, Any]]:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
     pairs: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     seen_fingerprints: set[str] = set()
