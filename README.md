@@ -239,3 +239,15 @@ another rule set.
 - The spaCy provider is opt-in, does not download language models, and can produce conservative morphology-guided subject/finite-verb agreement proposals. These remain proposals requiring user review; spaCy does not generate paragraphs or apply edits automatically.
 - Only five synthetic, draft examples are currently provided; there are no
   verified human revision pairs to support broad automatic rewriting.
+
+
+## Real academic revision corpus (opt-in, local-only)
+
+The companion [Og Academic Writing Corpus](https://github.com/krishna-swara/Og_Academic_Writing_Corpus) provides a pinned ParaRev acquisition source. Og_Dataset includes an adapter that maps genuine ParaRev paragraph pairs into its provenance-aware review schema without inventing edit labels or approving examples:
+
+```bash
+python scripts/acquire_og_awc_pararev.py --accept-license
+python scripts/validate_revision_pairs.py --input data/local_corpus/revision_pairs.jsonl
+```
+
+ParaRev declares CC BY-NC-SA 4.0. The downloaded text is stored only under the Git-ignored `data/local_corpus/` directory. All records remain pending human review, and runtime retrieval stays blocked because underlying paper-level text-mining rights have not been established. See [the integration and rights notes](./docs/pararev-integration.md) before acquisition. The full corpus includes the 641 annotated subset; do not count those rows twice or combine ParaRev and CASIMIR as independent records.
