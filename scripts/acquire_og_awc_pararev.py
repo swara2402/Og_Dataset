@@ -187,6 +187,10 @@ def main() -> int:
                 }
                 out.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
                 written += 1
+        if written == 0:
+            raise ValueError(
+                "No ParaRev rows could be mapped; the upstream field schema may have changed"
+            )
         temporary.replace(args.output)
     finally:
         temporary.unlink(missing_ok=True)
