@@ -240,7 +240,8 @@
           "source": {
             "required": [
               "url",
-              "license_evidence"
+              "license_evidence",
+              "text_mining_permitted"
             ]
           }
         }
