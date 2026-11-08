@@ -123,3 +123,47 @@ def test_validator_rejects_approval_without_text_mining_permission(tmp_path, mon
 
     with pytest.raises(ValueError, match="text-mining permission"):
         load_pairs(output)
+
+
+def test_validator_enforces_uri_format_for_public_source_provenance(tmp_path):
+    import json
+
+    from scripts.validate_revision_pairs import load_pairs
+
+    pair = {
+        "pair_id": "bad-uri",
+        "discipline": "unspecified",
+        "section": "other",
+        "original_text": "Original paragraph.",
+        "edited_text": "Revised paragraph.",
+        "edit_types": [],
+        "rationale": "No rationale was supplied by the source.",
+        "meaning_preserved": False,
+        "review_status": "pending_review",
+        "reviewer_id": None,
+        "source": {
+            "kind": "public_dataset",
+            "reference": "source record",
+            "license": "CC-BY-NC-SA-4.0",
+            "attribution": "Source attribution",
+            "url": "not a valid URL",
+            "license_evidence": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+            "text_mining_permitted": False,
+        },
+        "pararev_metadata": {
+            "paper_id": "paper-1",
+            "source_version_id": "v1",
+            "target_version_id": "v2",
+            "paragraph_id": "p1",
+            "source_revision": "pinned-revision",
+            "source_filename": "source.jsonl",
+            "source_row_number": 1,
+            "source_annotations": {},
+            "overlap_group": "full-corpus",
+        },
+    }
+    dataset = tmp_path / "revision_pairs.jsonl"
+    dataset.write_text(json.dumps(pair) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        load_pairs(dataset)
