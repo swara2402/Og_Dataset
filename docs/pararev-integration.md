@@ -29,7 +29,7 @@ Do not publish, redistribute, or use commercially without a separate rights revi
 - Missing discipline and section labels are represented as `unspecified` and `other`.
 - No edit labels or rationale are invented. The importer records that the source
   does not supply a verified rationale and leaves `edit_types` empty.
-- Every pair is `pending_review`, `meaning_preserved=false`, with no reviewer.
+- Every pair is `pending_review`, `meaning_preserved=false`, with no reviewer. Text-mining permission is explicitly set to false because the dataset licence does not resolve underlying paper rights.
   The importer never approves records or applies edits to a user's document.
 - Retrieval remains limited to its separately configured licence allowlist and
   human-approved, meaning-preserved records. ParaRev is not silently enabled as
