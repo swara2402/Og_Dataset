@@ -140,8 +140,8 @@ def import_records(input_path: Path, output_path: Path, report_path: Path) -> di
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
-    parser.add_argument("--output", type=Path, default=ROOT / "knowledge_base/datasets/og_awc_import_pending.jsonl")
-    parser.add_argument("--report", type=Path, default=ROOT / "reports/og_awc_import_report.json")
+    parser.add_argument("--output", type=Path, default=ROOT / "data/local_corpus/og_awc_import_pending.jsonl")
+    parser.add_argument("--report", type=Path, default=ROOT / "data/local_corpus/og_awc_import_report.json")
     args = parser.parse_args()
     report = import_records(args.input, args.output, args.report)
     print(json.dumps({k: v for k, v in report.items() if k != "rejections"}, indent=2))
