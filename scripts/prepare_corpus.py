@@ -11,6 +11,7 @@ import statistics
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from jsonschema import Draft202012Validator
 
@@ -30,7 +31,7 @@ TRANSITIONS = {
 
 def sentences(text: str) -> list[str]:
     # Conservative sentence boundary heuristic; abbreviations may require manual cleanup.
-    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", text) if len(s.split()) >= 3]
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[^\W_])", text) if len(s.split()) >= 3]
 
 
 def classify_sentence_opening(words: list[str]) -> str:
@@ -50,6 +51,26 @@ def classify_sentence_opening(words: list[str]) -> str:
     return "other"
 
 
+def _is_valid_https_url(value: object) -> bool:
+    """Accept absolute HTTPS provenance URLs with a valid host and optional port."""
+    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
+        return False
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(hostname)
+        and hostname.strip(".") != ""
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
+
+
 def load_manifest(path: Path) -> list[dict]:
     schema = json.loads(MANIFEST_SCHEMA.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
@@ -61,6 +82,8 @@ def load_manifest(path: Path) -> list[dict]:
             item = json.loads(line)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Manifest line {line_no}: invalid JSON") from exc
+        if not isinstance(item, dict):
+            raise ValueError(f"Manifest line {line_no}: record must be a JSON object")
         required = {"source_id", "title", "license", "text_mining_permitted", "discipline", "sections", "local_text"}
         if not required.issubset(item):
             raise ValueError(f"Manifest line {line_no}: missing {sorted(required - item.keys())}")
@@ -79,6 +102,11 @@ def load_manifest(path: Path) -> list[dict]:
         seen.add(sid)
         if item["license"] != "SYNTHETIC" and item["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"{sid}: licence is not on the reviewed allowlist")
+        if item["license"] != "SYNTHETIC":
+            for field in ("url", "license_evidence"):
+                value = item.get(field)
+                if not _is_valid_https_url(value):
+                    raise ValueError(f"{sid}: {field} must be a valid HTTPS URL")
         if item["text_mining_permitted"] is not True:
             raise ValueError(f"{sid}: text_mining_permitted must be explicitly true")
         if not isinstance(item["sections"], list) or not set(item["sections"]).issubset(SECTIONS):
@@ -103,6 +131,9 @@ def main() -> int:
     if args.validate_only:
         print(json.dumps({"valid": True, "source_count": len(manifest)}, indent=2))
         return 0
+    if args.input_dir.is_symlink():
+        raise ValueError("Corpus input directory must not be a symbolic link")
+    input_root = args.input_dir.resolve()
     stats = defaultdict(lambda: {"sentences": 0, "word_counts": [], "hedge_markers": 0,
                                  "be_auxiliary_markers": 0, "transition_markers": Counter(), "opening_patterns": Counter()})
     disciplines, total = Counter(), 0
@@ -110,6 +141,9 @@ def main() -> int:
         source_path = args.input_dir / source["local_text"]
         if source_path.is_symlink():
             raise ValueError(f"Corpus source must not be a symbolic link: {source['source_id']}")
+        resolved_source = source_path.resolve()
+        if not resolved_source.is_relative_to(input_root):
+            raise ValueError(f"Corpus source escapes the input directory: {source['source_id']}")
         if not source_path.is_file():
             if source["license"] == "SYNTHETIC":
                 continue
@@ -133,7 +167,7 @@ def main() -> int:
             if section not in source["sections"]:
                 continue
             for sentence in sentences(" ".join(lines)):
-                words = re.findall(r"[A-Za-z][A-Za-z'-]*", sentence.lower())
+                words = re.findall(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", sentence.lower(), re.UNICODE)
                 if not words:
                     continue
                 row = stats[f"{source['discipline']}::{section}"]

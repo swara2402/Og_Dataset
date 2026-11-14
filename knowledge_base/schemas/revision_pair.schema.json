@@ -3,33 +3,249 @@
   "title": "Human-reviewed academic revision pair",
   "type": "object",
   "additionalProperties": false,
-  "required": ["pair_id", "discipline", "section", "original_text", "edited_text", "edit_types", "rationale", "meaning_preserved", "review_status", "source"],
+  "required": [
+    "pair_id",
+    "discipline",
+    "section",
+    "original_text",
+    "edited_text",
+    "edit_types",
+    "rationale",
+    "meaning_preserved",
+    "review_status",
+    "source"
+  ],
   "properties": {
-    "pair_id": {"type": "string", "minLength": 1, "maxLength": 120},
-    "discipline": {"type": "string", "minLength": 1},
-    "section": {"enum": ["abstract", "introduction", "literature_review", "methods", "results", "discussion", "conclusion", "other"]},
-    "original_text": {"type": "string", "minLength": 1, "maxLength": 20000},
-    "edited_text": {"type": "string", "minLength": 1, "maxLength": 20000},
-    "edit_types": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["grammar", "clarity", "precision", "coherence", "concision", "terminology", "punctuation", "formatting"]}},
-    "rationale": {"type": "string", "minLength": 1, "maxLength": 3000},
-    "protected_claims": {"type": "array", "items": {"type": "string"}},
-    "meaning_preserved": {"type": "boolean"},
-    "review_status": {"enum": ["draft", "pending_review", "human_approved", "rejected"]},
-    "reviewer_id": {"type": ["string", "null"]},
+    "pair_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "discipline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "section": {
+      "enum": [
+        "abstract",
+        "introduction",
+        "literature_review",
+        "methods",
+        "results",
+        "discussion",
+        "conclusion",
+        "other"
+      ]
+    },
+    "original_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "edited_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "edit_types": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "grammar",
+          "clarity",
+          "precision",
+          "coherence",
+          "concision",
+          "terminology",
+          "punctuation",
+          "formatting"
+        ]
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3000
+    },
+    "protected_claims": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "meaning_preserved": {
+      "type": "boolean"
+    },
+    "review_status": {
+      "enum": [
+        "draft",
+        "pending_review",
+        "human_approved",
+        "rejected"
+      ]
+    },
+    "reviewer_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "reference", "license", "attribution"],
+      "required": [
+        "kind",
+        "reference",
+        "license",
+        "attribution"
+      ],
       "properties": {
-        "kind": {"enum": ["human_revision", "synthetic", "public_dataset"]},
-        "reference": {"type": "string", "minLength": 1},
-        "license": {"type": "string", "minLength": 1},
-        "attribution": {"type": "string"}
+        "kind": {
+          "enum": [
+            "human_revision",
+            "synthetic",
+            "public_dataset"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attribution": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "license_evidence": {
+          "type": "string",
+          "format": "uri"
+        },
+        "text_mining_permitted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "aries_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paper_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exact_parity": {
+          "type": "boolean"
+        },
+        "normalized_parity": {
+          "type": "boolean"
+        },
+        "reconstruction_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "normalized_pair_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "pararev_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paper_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_version_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_version_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paragraph_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_row_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_annotations": {
+          "type": "object"
+        },
+        "overlap_group": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
   },
-  "allOf": [{
-    "if": {"properties": {"review_status": {"const": "human_approved"}}},
-    "then": {"properties": {"meaning_preserved": {"const": true}, "reviewer_id": {"type": "string", "minLength": 1}}}
-  }]
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "review_status": {
+            "const": "human_approved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "meaning_preserved": {
+            "const": true
+          },
+          "reviewer_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "properties": {
+              "kind": {
+                "const": "public_dataset"
+              }
+            }
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "required": [
+              "url",
+              "license_evidence",
+              "text_mining_permitted"
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

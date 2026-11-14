@@ -12,13 +12,33 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "knowledge_base/schemas/revision_pair.schema.json"
 DEFAULT_INPUT = ROOT / "knowledge_base/datasets/revision_pairs.jsonl"
-ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0"}
+ALLOWED_LICENSES = {"CC-BY-4.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-3.0", "CC-BY-SA-3.0", "CC-BY-NC-SA-4.0"}
+
+
+def _is_valid_https_url(value: Any) -> bool:
+    if not isinstance(value, str) or not value or any(char.isspace() for char in value):
+        return False
+    try:
+        parsed = urlparse(value)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(hostname)
+        and hostname.strip(".") != ""
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
 
 
 def canonical_text(value: str) -> str:
@@ -32,7 +52,7 @@ def pair_fingerprint(item: dict[str, Any]) -> str:
 
 def load_pairs(path: Path) -> list[dict[str, Any]]:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    validator = Draft202012Validator(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
     pairs: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
     seen_fingerprints: set[str] = set()
@@ -62,6 +82,26 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"Line {line_number}: synthetic records must use SYNTHETIC provenance")
         elif source["license"] not in ALLOWED_LICENSES:
             raise ValueError(f"Line {line_number}: licence is not on the reviewed allowlist")
+        for field in ("url", "license_evidence"):
+            if field in source and not _is_valid_https_url(source[field]):
+                raise ValueError(
+                    f"Line {line_number}: provenance {field} must be a valid HTTPS URL"
+                )
+        if source["kind"] == "public_dataset":
+            for field in ("url", "license_evidence"):
+                if not _is_valid_https_url(source.get(field)):
+                    raise ValueError(
+                        f"Line {line_number}: public-dataset {field} must be a valid HTTPS URL"
+                    )
+        if (
+            source["kind"] == "public_dataset"
+            and item["review_status"] == "human_approved"
+            and source.get("text_mining_permitted") is not True
+        ):
+            raise ValueError(
+                f"Line {line_number}: public-dataset pairs cannot be approved without "
+                "explicit text-mining permission"
+            )
         if item["review_status"] == "human_approved" and item["meaning_preserved"] is not True:
             raise ValueError(f"Line {line_number}: approved pairs must explicitly preserve meaning")
         if item["original_text"].strip() == item["edited_text"].strip() and item["review_status"] == "human_approved":

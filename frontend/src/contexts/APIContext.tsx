@@ -270,6 +270,36 @@ export interface ReviewResponse {
   statistics: Record<string, unknown>;
 }
 
+export interface AcademicRevisionExample {
+  pair_id: string;
+  discipline: string;
+  section: string;
+  edit_types: string[];
+  original_text: string;
+  edited_text: string;
+  rationale: string;
+  score: number;
+  review_status: string;
+  paper_id: string | null;
+  parity: { exact: boolean | null; normalized: boolean | null };
+  provenance: {
+    kind: string;
+    reference: string;
+    url?: string | null;
+    license: string;
+    attribution?: string | null;
+  };
+}
+
+export interface AcademicExamplesResponse {
+  query: string;
+  count: number;
+  examples: AcademicRevisionExample[];
+  retrieval: string;
+  applies_edits: false;
+  eligibility: string;
+}
+
 interface APIContextType {
   healthCheck: () => Promise<HealthStatus | null>;
   getSettings: () => Promise<AppSettings | null>;
@@ -311,6 +341,12 @@ interface APIContextType {
   getAnalysisReport: (jobId: string) => Promise<AnalysisReport | null>;
   exportDocument: (jobId: string, format: 'docx' | 'txt' | 'md' | 'pdf' | 'tex') => Promise<Blob | null>;
   listJobs: () => Promise<JobSummary[]>;
+  getAcademicExamples: (query: string, filters?: {
+    discipline?: string;
+    section?: string;
+    edit_type?: string;
+    limit?: number;
+  }) => Promise<AcademicExamplesResponse | null>;
   errorMessage: (error: unknown) => string;
   isConnected: boolean;
   isCheckingConnection: boolean;
@@ -581,6 +617,21 @@ export function APIProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const getAcademicExamples = useCallback(async (
+    query: string,
+    filters?: { discipline?: string; section?: string; edit_type?: string; limit?: number }
+  ): Promise<AcademicExamplesResponse | null> => {
+    try {
+      const response = await api.get<AcademicExamplesResponse>('/retrieval/examples', {
+        params: { query, ...filters },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Academic example retrieval failed:', extractError(error));
+      return null;
+    }
+  }, []);
+
   const listJobs = useCallback(async (): Promise<JobSummary[]> => {
     try {
       const response = await api.get<{ jobs: JobSummary[] }>('/jobs');
@@ -608,6 +659,7 @@ export function APIProvider({ children }: { children: ReactNode }) {
     getAnalysisReport,
     exportDocument,
     listJobs,
+    getAcademicExamples,
     errorMessage: extractError,
     isConnected,
     isCheckingConnection,

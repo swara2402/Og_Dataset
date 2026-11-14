@@ -214,8 +214,11 @@ class DocxParser:
             nonlocal table_counter
             table_counter += 1
             current_table = table_counter
+            # A vertically merged cell can be exposed by python-docx in
+            # more than one row. Track physical cells across the whole table,
+            # not just within each row, so its paragraphs receive one stable ID.
+            seen_cells: set[Any] = set()
             for row_idx, row in enumerate(table.rows):
-                seen_cells: set[Any] = set()
                 for cell_idx, cell in enumerate(row.cells):
                     cell_key = cell._tc
                     if cell_key in seen_cells:
@@ -295,7 +298,7 @@ class PDFParser:
     def parse(file_path: Path, filename: str) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(str(file_path))
-            return PDFParser._extract_paragraphs(doc, filename)
+            return PDFParser._parse_fitz_document(doc, filename)
         if PYPDF_AVAILABLE:
             reader = PypdfReader(str(file_path))
             return PDFParser._extract_with_pypdf(reader, filename)
@@ -308,16 +311,26 @@ class PDFParser:
     def parse_bytes(data: bytes, filename: str, *, enable_ocr: bool = False, ocr_language: str = "eng", ocr_dpi: int = 200) -> ParsedDocument:
         if PYMUPDF_AVAILABLE:
             doc = fitz.open(stream=data, filetype="pdf")
-            return PDFParser._extract_paragraphs(doc, filename, enable_ocr=enable_ocr, ocr_language=ocr_language, ocr_dpi=ocr_dpi)
+            return PDFParser._parse_fitz_document(
+                doc, filename, enable_ocr=enable_ocr,
+                ocr_language=ocr_language, ocr_dpi=ocr_dpi,
+            )
         if PYPDF_AVAILABLE:
             reader = PypdfReader(io.BytesIO(data))
             parsed = PDFParser._extract_with_pypdf(reader, filename)
             if enable_ocr:
+                pages_needing_ocr = sorted(set(
+                    parsed.metadata.get("pages_with_no_text", [])
+                    + parsed.metadata.get("pages_with_little_text", [])
+                ))
                 parsed.metadata.update({
                     "ocr_enabled": True, "ocr_pages": [],
-                    "ocr_unavailable_pages": parsed.metadata.get("pages_with_no_text", []),
+                    "ocr_unavailable_pages": pages_needing_ocr,
                     "ocr_language": ocr_language, "ocr_dpi": ocr_dpi,
-                    "ocr_warning": "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available.",
+                    "ocr_warning": (
+                        "Local OCR requires PyMuPDF; install the optional OCR dependencies and ensure PyMuPDF is available."
+                        if pages_needing_ocr else None
+                    ),
                 })
             return parsed
         raise ImportError(
@@ -325,6 +338,14 @@ class PDFParser:
             "'pip install pymupdf' or 'pip install pypdf'."
         )
     
+    @staticmethod
+    def _parse_fitz_document(doc: Any, filename: str, **options: Any) -> ParsedDocument:
+        """Extract a PDF and always release the PyMuPDF document handle."""
+        try:
+            return PDFParser._extract_paragraphs(doc, filename, **options)
+        finally:
+            doc.close()
+
     @staticmethod
     def _quality_metadata(page_texts: List[str], extractor: str) -> Dict[str, Any]:
         lengths = [len(text.strip()) for text in page_texts]
@@ -410,8 +431,9 @@ class PDFParser:
         ocr_dependency_error: str | None = None
         
         for page_num, page in enumerate(doc):
-            page_text = page.get_text("text") or ""
-            if enable_ocr and len(page_text.strip()) < 40:
+            original_page_text = page.get_text("text") or ""
+            page_text = original_page_text
+            if enable_ocr and len(original_page_text.strip()) < 40:
                 try:
                     ocr_text = PDFParser._ocr_page(page, language=ocr_language, dpi=ocr_dpi)
                     if ocr_text.strip():
@@ -422,7 +444,7 @@ class PDFParser:
                     ocr_unavailable_pages.append(page_num + 1)
             page_texts.append(page_text)
             blocks = page.get_text("blocks")
-            if enable_ocr and len((page.get_text("text") or "").strip()) < 40 and page_num + 1 in ocr_pages:
+            if enable_ocr and len(original_page_text.strip()) < 40 and page_num + 1 in ocr_pages:
                 blocks = []
                 for block_text in re.split(r"\n\s*\n", page_text):
                     block_text = block_text.strip()
@@ -514,69 +536,170 @@ class TextParser:
 
 
 class MarkdownParser:
-    """Markdown file parser."""
-    
+    """Conservative Markdown parser protecting fenced and indented code blocks."""
+
     @staticmethod
     def parse(file_path: Path, filename: str) -> ParsedDocument:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         return MarkdownParser._parse_markdown(content, filename)
-    
+
     @staticmethod
     def parse_bytes(data: bytes, filename: str) -> ParsedDocument:
-        content = data.decode('utf-8')
+        content = data.decode("utf-8")
         return MarkdownParser._parse_markdown(content, filename)
-    
+
     @staticmethod
     def _parse_markdown(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
-        counter = 0
-        
-        # Split into blocks, identify markdown elements
-        blocks = re.split(r'\n\s*\n', content)
-        
-        for block in blocks:
+        blocks: List[tuple[str, str | None, str, int, bool]] = []
+        current: List[str] = []
+        fence_char: str | None = None
+        fence_length = 0
+        fence_language = ""
+        fence_start = 0
+        indented_code = False
+        indented_start = 0
+        pending_blank_lines: List[str] = []
+
+        def flush(kind: str | None = None, language: str = "", start_line: int = 0, closed: bool = True) -> None:
+            nonlocal current
+            if current:
+                blocks.append(("\n".join(current), kind, language, start_line, closed))
+                current = []
+
+        for line_number, line in enumerate(content.splitlines(), start=1):
+            if fence_char is None and indented_code:
+                if not line.strip():
+                    # A blank line belongs to an indented code block only if
+                    # another indented code line follows it.
+                    pending_blank_lines.append(line)
+                    continue
+                is_indented = line.startswith("    ") or line.startswith("\t")
+                if is_indented:
+                    current.extend(pending_blank_lines)
+                    pending_blank_lines = []
+                    current.append(line)
+                    continue
+                flush("indented_code", "", indented_start, True)
+                indented_code = False
+                pending_blank_lines = []
+
+            # CommonMark fenced blocks may be indented by at most three spaces.
+            # Four-space-indented fence-like text is code content, not a delimiter.
+            indent = len(line) - len(line.lstrip(" "))
+            stripped = line[indent:] if indent <= 3 else ""
+            if fence_char is None:
+                opening = re.match(r"^(\x60{3,}|~{3,})(.*)$", stripped)
+                # CommonMark forbids backticks in the info string of a
+                # backtick fence; such a line is ordinary text, not an opener.
+                valid_opening = opening and not (
+                    opening.group(1)[0] == "`" and "`" in opening.group(2)
+                )
+                if valid_opening:
+                    flush()
+                    fence_char = opening.group(1)[0]
+                    fence_length = len(opening.group(1))
+                    fence_language = opening.group(2).strip()
+                    fence_start = line_number
+                    current = [line]
+                    continue
+                if line.startswith("    ") or line.startswith("\t"):
+                    flush()
+                    indented_code = True
+                    indented_start = line_number
+                    current = [line]
+                elif not line.strip():
+                    flush()
+                else:
+                    current.append(line)
+                continue
+
+            current.append(line)
+            closing = re.match(r"^([\x60~]+)\s*$", stripped)
+            if closing and closing.group(1)[0] == fence_char and len(closing.group(1)) >= fence_length and set(closing.group(1)) == {fence_char}:
+                flush("code", fence_language, fence_start, True)
+                fence_char = None
+                fence_length = 0
+                fence_language = ""
+                fence_start = 0
+
+        if fence_char is not None:
+            flush("code", fence_language, fence_start, False)
+        elif indented_code:
+            # Trailing blank lines are not part of the code block.
+            flush("indented_code", "", indented_start, True)
+        else:
+            flush()
+
+        for index, (block, forced_type, language, start_line, closed) in enumerate(blocks, start=1):
+            if forced_type == "code":
+                fence_lines = block.splitlines()
+                code_lines = fence_lines[1:-1] if closed and len(fence_lines) >= 2 else fence_lines[1:]
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text="\n".join(code_lines),
+                    paragraph_type="code",
+                    location=f"markdown.{index}",
+                    metadata={
+                        "code_block": True,
+                        "fenced": True,
+                        "fence_language": language,
+                        "fence_char": block.lstrip()[:1] if block.lstrip()[:1] in {"`", "~"} else "`",
+                        "source_line": start_line,
+                        "closed_fence": closed,
+                    },
+                ))
+                continue
+
+            if forced_type == "indented_code":
+                code_lines = [
+                    line[4:] if line.startswith("    ")
+                    else line[1:] if line.startswith("\t")
+                    else line
+                    for line in block.splitlines()
+                ]
+                paragraphs.append(DocumentParagraph(
+                    id=f"md_{index}",
+                    text="\n".join(code_lines),
+                    paragraph_type="code",
+                    location=f"markdown.{index}",
+                    metadata={
+                        "code_block": True,
+                        "fenced": False,
+                        "fence_language": "",
+                        "fence_char": "`",
+                        "source_line": start_line,
+                        "closed_fence": True,
+                    },
+                ))
+                continue
+
             block = block.strip()
             if not block:
                 continue
-            counter += 1
-            
-            # Detect markdown headings
-            if block.startswith('#'):
+            if block.startswith("#"):
                 paragraphs.append(DocumentParagraph(
-                    id=f"md_{counter}",
-                    text=block.lstrip('#').strip(),
+                    id=f"md_{index}",
+                    text=block.lstrip("#").strip(),
                     paragraph_type="heading",
-                    location=f"markdown.{counter}",
-                    metadata={"md_heading": True}
+                    location=f"markdown.{index}",
+                    metadata={"md_heading": True},
                 ))
-                continue
-            
-            # Detect code blocks
-            if block.startswith('```'):
+            else:
                 paragraphs.append(DocumentParagraph(
-                    id=f"md_{counter}",
-                    text=block.replace('```', '').strip(),
-                    paragraph_type="code",
-                    location=f"markdown.{counter}",
-                    metadata={"code_block": True}
+                    id=f"md_{index}",
+                    text=block,
+                    paragraph_type="body",
+                    location=f"markdown.{index}",
                 ))
-                continue
-            
-            # Regular body text
-            paragraphs.append(DocumentParagraph(
-                id=f"md_{counter}",
-                text=block,
-                paragraph_type="body",
-                location=f"markdown.{counter}"
-            ))
-        
+
         return ParsedDocument(
             filename=filename,
             file_type="markdown",
-            paragraphs=paragraphs
+            paragraphs=paragraphs,
+            metadata={"block_count": len(paragraphs)},
         )
-
 
 class LatexParser:
     """Conservative LaTeX block parser with exact source offsets.
@@ -589,7 +712,7 @@ class LatexParser:
     @staticmethod
     def _classify(block: str) -> str:
         value = block.strip()
-        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|gather\*?|multline\*?|math|displaymath|flalign\*?)\}", value):
+        if re.search(r"\\begin\s*\{(?:equation\*?|align\*?|alignat\*?|gather\*?|gathered|multline\*?|math|displaymath|flalign\*?|eqnarray\*?|split|cases|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix)\}", value):
             return "equation"
         if re.search(r"(?<!\\)\$(?:[^$]|\\\$)+\$|\\\(|\\\)|\\\[|\\\]", value):
             return "equation"
@@ -616,8 +739,16 @@ class LatexParser:
     def _parse_content(content: str, filename: str) -> ParsedDocument:
         paragraphs: List[DocumentParagraph] = []
         block_pattern = re.compile(r"\S(?:.*?\S)?(?=\n[ \t]*\n|\Z)", re.S)
+        math_environments = {
+            "equation", "equation*", "align", "align*", "alignat", "alignat*",
+            "gather", "gather*", "gathered", "multline", "multline*",
+            "flalign", "flalign*", "eqnarray", "eqnarray*", "math",
+            "displaymath", "split", "cases", "array", "matrix", "pmatrix",
+            "bmatrix", "Bmatrix", "vmatrix", "Vmatrix",
+        }
         protected_environments = {
             "verbatim", "verbatim*", "lstlisting", "minted", "alltt",
+            *math_environments,
             "figure", "figure*", "table", "table*", "tabular", "tabular*",
             "longtable", "tikzpicture", "algorithm", "algorithm*",
             "algorithmic", "picture", "minipage",
@@ -641,10 +772,22 @@ class LatexParser:
                         reverse_index = len(active_environments) - 1 - active_environments[::-1].index(environment)
                         active_environments = active_environments[:reverse_index]
             paragraph_type = LatexParser._classify(block)
+            protected_context = [
+                *active_environments,
+                *(environment for _, environment in environment_pattern.findall(block)),
+            ]
             if was_inside_protected or starts_protected or any(
                 env in protected_environments for env in active_environments
             ):
-                paragraph_type = "code"
+                # Math remains a distinct non-editable equation type. Other
+                # protected containers (figures, code, tables, diagrams) take
+                # precedence when math is nested inside them.
+                if any(env in protected_environments - math_environments for env in protected_context):
+                    paragraph_type = "code"
+                elif any(env in math_environments for env in protected_context):
+                    paragraph_type = "equation"
+                else:
+                    paragraph_type = "code"
             paragraphs.append(DocumentParagraph(
                 id=f"tex_block_{index}",
                 text=block,
