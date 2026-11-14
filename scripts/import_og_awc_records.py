@@ -71,9 +71,6 @@ def convert_record(record: dict[str, Any]) -> dict[str, Any]:
         discipline = "unspecified"
     source_record_id = provenance.get("source_record_id")
     reference = source_record_id if isinstance(source_record_id, str) and source_record_id.strip() else record["record_id"]
-    normalized_original = re.sub(r"\s+", " ", record["original_text"]).strip().casefold()
-    normalized_revised = re.sub(r"\s+", " ", record["revised_text"]).strip().casefold()
-    digest = hashlib.sha256((normalized_original + "\0" + normalized_revised + "\0" + record["record_type"]).encode()).hexdigest()
     acquisition_date = provenance.get("acquisition_date")
     result = {
         "pair_id": "ogawc_" + _safe_id(record["record_id"]),
@@ -116,6 +113,9 @@ def import_records(input_path: Path, output_path: Path, report_path: Path) -> di
             try:
                 raw_record = json.loads(line)
                 item = convert_record(raw_record)
+                normalized_original = " ".join(raw_record["original_text"].casefold().split())
+                normalized_revised = " ".join(raw_record["revised_text"].casefold().split())
+                digest = hashlib.sha256((normalized_original + "|" + normalized_revised + "|" + raw_record["record_type"]).encode()).hexdigest()
                 normalized_original = re.sub(r"\\s+", " ", raw_record["original_text"]).strip().casefold()
                 normalized_revised = re.sub(r"\\s+", " ", raw_record["revised_text"]).strip().casefold()
                 digest = hashlib.sha256((normalized_original + "\\0" + normalized_revised + "\\0" + raw_record["record_type"]).encode()).hexdigest()
