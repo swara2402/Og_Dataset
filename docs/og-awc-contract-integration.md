@@ -8,13 +8,14 @@ third-party corpus files remain local and are not committed to either repository
 
 ## Import a locally prepared corpus
 
-From the Og_Dataset root, after acquiring and validating data in the companion
-repository, run:
+From the Og_Dataset root, after acquiring, validating and preparing the paper-level
+splits in the companion repository, run. Prefer the prepared all.jsonl file so
+its train/validation/test assignment is retained:
 
     python scripts/import_og_awc_records.py \
-      --input /path/to/Og_Academic_Writing_Corpus/processed/pararev_pairs.jsonl \
-      --output knowledge_base/datasets/og_awc_import_pending.jsonl \
-      --report reports/og_awc_import_report.json
+      --input /path/to/Og_Academic_Writing_Corpus/processed/pararev_splits/all.jsonl \
+      --output data/local_corpus/og_awc_import_pending.jsonl \
+      --report data/local_corpus/og_awc_import_report.json
 
 The adapter validates each output against the canonical revision-pair schema,
 preserves source and paper identifiers, source split, provenance and original
@@ -31,7 +32,7 @@ in metadata but are not mapped to unrelated edit categories.
   placeholder explicitly requires a human reviewer to assess and add one.
 - The 641 annotated ParaRev subset and full ParaRev file overlap. Never count
   them as independent examples; retain lineage and deduplicate.
-- Do not commit local third-party text to GitHub.
+- Imported records and reports default to data/local_corpus/, which is ignored by Git. Do not move or commit local third-party text into tracked paths.
 - Retrieval requires explicit text-mining permission, a compatible license,
   human approval, meaning-preservation review and reviewer attribution.
 - A source license declaration does not settle rights in underlying articles.
