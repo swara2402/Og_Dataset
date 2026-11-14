@@ -116,9 +116,6 @@ def import_records(input_path: Path, output_path: Path, report_path: Path) -> di
                 normalized_original = " ".join(raw_record["original_text"].casefold().split())
                 normalized_revised = " ".join(raw_record["revised_text"].casefold().split())
                 digest = hashlib.sha256((normalized_original + "|" + normalized_revised + "|" + raw_record["record_type"]).encode()).hexdigest()
-                normalized_original = re.sub(r"\\s+", " ", raw_record["original_text"]).strip().casefold()
-                normalized_revised = re.sub(r"\\s+", " ", raw_record["revised_text"]).strip().casefold()
-                digest = hashlib.sha256((normalized_original + "\\0" + normalized_revised + "\\0" + raw_record["record_type"]).encode()).hexdigest()
                 errors = list(validator.iter_errors(item))
                 if errors:
                     raise ValueError(errors[0].message)
