@@ -197,6 +197,57 @@
           "minLength": 1
         }
       }
+    },
+    "og_awc_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paper_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "record_type": {
+          "enum": [
+            "revision_pair",
+            "human_reviewed_edit"
+          ]
+        },
+        "source_split": {
+          "enum": [
+            "train",
+            "validation",
+            "test",
+            "unassigned"
+          ]
+        },
+        "acquisition_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "source_record_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_notes": {
+          "type": "string"
+        },
+        "source_edit_labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "allOf": [
