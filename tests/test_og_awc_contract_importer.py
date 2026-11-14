@@ -25,6 +25,7 @@ def test_import_is_pending_and_never_claims_meaning_preserved():
     assert item["edit_types"]==["grammar"]
     assert "does not provide a verified edit rationale" in item["rationale"]
     assert item["pararev_metadata"]["paper_id"]=="paper-001"
+    assert "_pair_digest" not in item
 
 def test_explicit_permission_is_preserved_but_does_not_approve():
     record=source_record(); record["provenance"]["text_mining_permitted"]=True
