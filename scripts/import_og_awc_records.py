@@ -9,7 +9,7 @@ import argparse, hashlib, json, re
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "knowledge_base" / "schemas" / "revision_pair.schema.json"
@@ -71,7 +71,9 @@ def convert_record(record: dict[str, Any]) -> dict[str, Any]:
         discipline = "unspecified"
     source_record_id = provenance.get("source_record_id")
     reference = source_record_id if isinstance(source_record_id, str) and source_record_id.strip() else record["record_id"]
-    digest = hashlib.sha256((record["paper_id"] + "\0" + record["original_text"].strip() + "\0" + record["revised_text"].strip()).encode()).hexdigest()
+    normalized_original = re.sub(r"\s+", " ", record["original_text"]).strip().casefold()
+    normalized_revised = re.sub(r"\s+", " ", record["revised_text"]).strip().casefold()
+    digest = hashlib.sha256((normalized_original + "\0" + normalized_revised + "\0" + record["record_type"]).encode()).hexdigest()
     acquisition_date = provenance.get("acquisition_date")
     result = {
         "pair_id": "ogawc_" + _safe_id(record["record_id"]),
@@ -104,7 +106,7 @@ def convert_record(record: dict[str, Any]) -> dict[str, Any]:
     return result
 
 def import_records(input_path: Path, output_path: Path, report_path: Path) -> dict[str, Any]:
-    validator = Draft202012Validator(json.loads(SCHEMA_PATH.read_text(encoding="utf-8")))
+    validator = Draft202012Validator(json.loads(SCHEMA_PATH.read_text(encoding="utf-8")), format_checker=FormatChecker())
     imported, rejected, ids, digests = [], [], set(), set()
     total = 0
     with input_path.open(encoding="utf-8") as handle:
