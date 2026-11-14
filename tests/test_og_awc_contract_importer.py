@@ -60,3 +60,16 @@ def test_import_report_deduplicates_and_counts_rejections(tmp_path: Path):
     assert result["input_records"]==3 and result["imported_pending_review"]==1
     assert result["rejected"]==2 and result["approved"]==0 and result["retrieval_eligible"]==0
     assert len(output.read_text(encoding="utf-8").splitlines())==1
+
+
+def test_duplicate_pair_across_different_papers_is_rejected(tmp_path: Path):
+    source=tmp_path/"input.jsonl"; output=tmp_path/"pending.jsonl"; report=tmp_path/"report.json"
+    first=source_record()
+    second=source_record()
+    second["record_id"]="pararev-002"
+    second["paper_id"]="paper-002"
+    second["provenance"]["source_record_id"]="para-002"
+    source.write_text("".join(json.dumps(x)+"\n" for x in [first,second]),encoding="utf-8")
+    result=import_records(source,output,report)
+    assert result["imported_pending_review"]==1
+    assert result["rejected"]==1
