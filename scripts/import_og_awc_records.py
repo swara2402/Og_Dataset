@@ -91,7 +91,6 @@ def convert_record(record: dict[str, Any]) -> dict[str, Any]:
             "source_record_id": source_record_id if isinstance(source_record_id, str) else None,
             "source_notes": str(provenance.get("notes", "")), "source_edit_labels": raw_labels,
         },
-        "_pair_digest": digest,
     }
     if isinstance(acquisition_date, str) and acquisition_date.strip():
         result["og_awc_metadata"]["acquisition_date"] = acquisition_date
@@ -115,8 +114,11 @@ def import_records(input_path: Path, output_path: Path, report_path: Path) -> di
                 continue
             total += 1
             try:
-                item = convert_record(json.loads(line))
-                digest = item.pop("_pair_digest")
+                raw_record = json.loads(line)
+                item = convert_record(raw_record)
+                normalized_original = re.sub(r"\\s+", " ", raw_record["original_text"]).strip().casefold()
+                normalized_revised = re.sub(r"\\s+", " ", raw_record["revised_text"]).strip().casefold()
+                digest = hashlib.sha256((normalized_original + "\\0" + normalized_revised + "\\0" + raw_record["record_type"]).encode()).hexdigest()
                 errors = list(validator.iter_errors(item))
                 if errors:
                     raise ValueError(errors[0].message)
